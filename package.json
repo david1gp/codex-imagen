@@ -19,6 +19,7 @@
   "scripts": {
     "build": "rm -rf ./dist && bun tsc -p ./tsconfig.lib.json",
     "format": "bunx biome check --write src",
+    "release": "bash ./ops/release.sh",
     "test": "bun test"
   },
   "dependencies": {
