@@ -1,0 +1,58 @@
+{
+  "name": "@adaptive-ds/codex-imagen",
+  "version": "0.1.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./*.js": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "imports": {
+    "#result": "@adaptive-ds/result"
+  },
+  "scripts": {
+    "build": "rm -rf ./dist && bun tsc -p ./tsconfig.lib.json",
+    "format": "bunx biome check --write src",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@adaptive-ds/result": "link:@adaptive-ds/result"
+  },
+  "peerDependencies": {
+    "valibot": "^1.2.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.11",
+    "@types/bun": "latest",
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3",
+    "valibot": "^1.3.1"
+  },
+  "description": "Type-safe codex-lb/OpenAI-compatible image generation helpers for singles, edits, and packed image grids.",
+  "homepage": "https://github.com/david1gp/codex-imagen",
+  "keywords": [
+    "codex-lb",
+    "openai",
+    "images",
+    "image-generation",
+    "image-grid",
+    "typescript",
+    "valibot"
+  ],
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/david1gp/codex-imagen.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module"
+}
