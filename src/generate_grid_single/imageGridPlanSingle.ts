@@ -1,16 +1,16 @@
 import { createResult, createResultError, type Result } from "#result"
 import { imageSizePickBiggerThatFits } from "../shared/imageSizePickBiggerThatFits.js"
-import { imageGridAspectSnap } from "./imageGridAspectSnap.js"
-import { imageGridConfig } from "./imageGridConfig.js"
+import { imageGridAspectSnapSingle } from "./imageGridAspectSnapSingle.js"
+import { imageGridConfigSingle } from "./imageGridConfigSingle.js"
 
-export type ImageGridPlanRequest = {
+export type ImageGridPlanSingleRequest = {
   cellAspect: number
   desiredCellShortEdgePx: number
   cellCount?: number
   fixed?: { cols: number; rows: number }
 }
 
-export type ImageGridPlan = {
+export type ImageGridPlanSingle = {
   cols: number
   rows: number
   requestSize: `${number}x${number}`
@@ -20,9 +20,9 @@ export type ImageGridPlan = {
   estCellShortEdgePx: number
 }
 
-type ImageGridPlanCandidate = ImageGridPlan
+type ImageGridPlanSingleCandidate = ImageGridPlanSingle
 
-function imageGridLayoutCandidates(request: ImageGridPlanRequest): Array<{ cols: number; rows: number }> {
+function imageGridLayoutCandidatesSingle(request: ImageGridPlanSingleRequest): Array<{ cols: number; rows: number }> {
   if (request.fixed !== undefined) return [request.fixed]
   const count = request.cellCount ?? 0
   const pairs: Array<{ cols: number; rows: number }> = []
@@ -32,15 +32,15 @@ function imageGridLayoutCandidates(request: ImageGridPlanRequest): Array<{ cols:
   return pairs
 }
 
-function imageGridCandidateEvaluate(
+function imageGridCandidateEvaluateSingle(
   cols: number,
   rows: number,
   cellAspect: number,
   op: string,
-): Result<ImageGridPlanCandidate> {
-  const { honoredToleranceFraction, maxEdgePx } = imageGridConfig
+): Result<ImageGridPlanSingleCandidate> {
+  const { honoredToleranceFraction, maxEdgePx } = imageGridConfigSingle
   const naturalGridAspect = (cols * cellAspect) / rows
-  const requestAspect = imageGridAspectSnap(naturalGridAspect)
+  const requestAspect = imageGridAspectSnapSingle(naturalGridAspect)
   const distortionFree = Math.abs(requestAspect - naturalGridAspect) / naturalGridAspect <= honoredToleranceFraction
   const renderedCellAspect = requestAspect * (rows / cols)
   const keep = distortionFree
@@ -65,7 +65,10 @@ function imageGridCandidateEvaluate(
   })
 }
 
-function imageGridCandidateBetter(candidate: ImageGridPlanCandidate, best: ImageGridPlanCandidate): boolean {
+function imageGridCandidateBetterSingle(
+  candidate: ImageGridPlanSingleCandidate,
+  best: ImageGridPlanSingleCandidate,
+): boolean {
   if (candidate.distortionFree !== best.distortionFree) return candidate.distortionFree
   if (candidate.estCellShortEdgePx !== best.estCellShortEdgePx) {
     return candidate.estCellShortEdgePx > best.estCellShortEdgePx
@@ -76,8 +79,8 @@ function imageGridCandidateBetter(candidate: ImageGridPlanCandidate, best: Image
   return candidate.cols < best.cols
 }
 
-export function imageGridPlan(request: ImageGridPlanRequest): Result<ImageGridPlan> {
-  const op = "imageGridPlan"
+export function imageGridPlanSingle(request: ImageGridPlanSingleRequest): Result<ImageGridPlanSingle> {
+  const op = "imageGridPlanSingle"
   const { cellAspect, desiredCellShortEdgePx, cellCount, fixed } = request
 
   if (!(cellAspect > 0)) return createResultError(op, `cellAspect must be > 0, got ${cellAspect}`)
@@ -92,12 +95,12 @@ export function imageGridPlan(request: ImageGridPlanRequest): Result<ImageGridPl
     return createResultError(op, `fixed cols/rows must be > 0, got ${fixed.cols}x${fixed.rows}`)
   }
 
-  let best: ImageGridPlanCandidate | undefined
-  for (const { cols, rows } of imageGridLayoutCandidates(request)) {
-    const candidateResult = imageGridCandidateEvaluate(cols, rows, cellAspect, op)
+  let best: ImageGridPlanSingleCandidate | undefined
+  for (const { cols, rows } of imageGridLayoutCandidatesSingle(request)) {
+    const candidateResult = imageGridCandidateEvaluateSingle(cols, rows, cellAspect, op)
     if (!candidateResult.success) return candidateResult
     const candidate = candidateResult.data
-    if (best === undefined || imageGridCandidateBetter(candidate, best)) best = candidate
+    if (best === undefined || imageGridCandidateBetterSingle(candidate, best)) best = candidate
   }
 
   if (best === undefined) return createResultError(op, "no candidate layout produced")

@@ -6,13 +6,13 @@ import type { ImageModel } from "../shared/imageModel.js"
 import type { ImageModeration } from "../shared/imageModeration.js"
 import type { ImageOutputFormat } from "../shared/imageOutputFormat.js"
 import type { ImageQuality } from "../shared/imageQuality.js"
-import { type ImageGridCell, imageGridSlice } from "./imageGridSlice.js"
+import { type ImageGridCellSingle, imageGridSliceSingle } from "./imageGridSliceSingle.js"
 
-export type ImageGridGenerateOptions = {
+export type ImageGridGenerateSingleOptions = {
   client: CodexImagenClientInput
   prompt: string
   gridOutputPath: string
-  cells: ImageGridCell[]
+  cells: ImageGridCellSingle[]
   cols: number
   rows: number
   size: string
@@ -26,14 +26,17 @@ export type ImageGridGenerateOptions = {
   user?: string
   writeGridTxt?: boolean
   writeCellTxt?: boolean
+  cropPaddingFraction?: number
 }
 
-export type ImageGridGenerateResult = {
+export type ImageGridGenerateSingleResult = {
   gridPath: string
   cellPaths: string[]
 }
 
-export async function imageGridGenerate(options: ImageGridGenerateOptions): Promise<Result<ImageGridGenerateResult>> {
+export async function imageGridGenerateSingle(
+  options: ImageGridGenerateSingleOptions,
+): Promise<Result<ImageGridGenerateSingleResult>> {
   const generateResult = await codexImageGenerate({
     client: options.client,
     prompt: options.prompt,
@@ -50,12 +53,13 @@ export async function imageGridGenerate(options: ImageGridGenerateOptions): Prom
   })
   if (!generateResult.success) return generateResult
 
-  const sliceResult = imageGridSlice({
+  const sliceResult = imageGridSliceSingle({
     gridPath: generateResult.data.outputPath,
     cols: options.cols,
     rows: options.rows,
     cells: options.cells,
     cropCellToAspect: options.cropCellToAspect,
+    cropPaddingFraction: options.cropPaddingFraction,
     writeTxt: options.writeCellTxt ?? true,
   })
   if (!sliceResult.success) return sliceResult

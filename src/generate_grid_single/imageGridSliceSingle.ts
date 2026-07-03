@@ -3,26 +3,26 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 import { createResult, createResultError, type Result } from "#result"
 import { imageAltClean } from "../shared/imageAltClean.js"
-import { imageGridConfig } from "./imageGridConfig.js"
+import { imageGridConfigSingle } from "./imageGridConfigSingle.js"
 
-export type ImageGridCell = {
+export type ImageGridCellSingle = {
   col: number
   row: number
   outputPath: string
   prompt?: string
 }
 
-export type ImageGridSliceOptions = {
+export type ImageGridSliceSingleOptions = {
   gridPath: string
   cols: number
   rows: number
-  cells: ImageGridCell[]
+  cells: ImageGridCellSingle[]
   cropCellToAspect?: number | null
   cropPaddingFraction?: number
   writeTxt?: boolean
 }
 
-function imageGridDimensions(gridPath: string): { width: number; height: number } {
+function imageGridDimensionsSingle(gridPath: string): { width: number; height: number } {
   const [width, height] = execFileSync("magick", ["identify", "-format", "%w %h", gridPath])
     .toString()
     .trim()
@@ -31,7 +31,7 @@ function imageGridDimensions(gridPath: string): { width: number; height: number 
   return { width: width ?? 0, height: height ?? 0 }
 }
 
-function imageGridCellCropRect(
+function imageGridCellCropRectSingle(
   cellW: number,
   cellH: number,
   targetAspect: number,
@@ -45,22 +45,22 @@ function imageGridCellCropRect(
   return { width: cellW, height, offsetX: 0, offsetY: Math.round((cellH - height) / 2) }
 }
 
-export function imageGridSlice(options: ImageGridSliceOptions): Result<string[]> {
-  const op = "imageGridSlice"
+export function imageGridSliceSingle(options: ImageGridSliceSingleOptions): Result<string[]> {
+  const op = "imageGridSliceSingle"
   const {
     gridPath,
     cols,
     rows,
     cells,
     cropCellToAspect,
-    cropPaddingFraction = imageGridConfig.cropPaddingFraction,
+    cropPaddingFraction = imageGridConfigSingle.cropPaddingFraction,
     writeTxt = true,
   } = options
 
   if (!(cols > 0 && rows > 0)) return createResultError(op, `cols/rows must be > 0, got ${cols}x${rows}`)
 
   try {
-    const { width, height } = imageGridDimensions(gridPath)
+    const { width, height } = imageGridDimensionsSingle(gridPath)
     if (width === 0 || height === 0) return createResultError(op, `could not read grid dimensions: ${gridPath}`)
 
     const cellW = width / cols
@@ -69,7 +69,7 @@ export function imageGridSlice(options: ImageGridSliceOptions): Result<string[]>
     const padY = cellH * cropPaddingFraction
     const shavedW = Math.round(cellW - padX * 2)
     const shavedH = Math.round(cellH - padY * 2)
-    const crop = cropCellToAspect != null ? imageGridCellCropRect(shavedW, shavedH, cropCellToAspect) : undefined
+    const crop = cropCellToAspect != null ? imageGridCellCropRectSingle(shavedW, shavedH, cropCellToAspect) : undefined
     const cropW = crop?.width ?? shavedW
     const cropH = crop?.height ?? shavedH
     const cropOffsetX = crop?.offsetX ?? 0

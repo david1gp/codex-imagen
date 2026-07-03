@@ -15,7 +15,8 @@ Type-safe TypeScript helpers for codex-lb/OpenAI-compatible image generation.
 
 - `src/edit`: image edit endpoint helpers.
 - `src/generate_single`: single image generation endpoint helpers.
-- `src/generate_grid`: packed grid planning, generation, and slicing helpers.
+- `src/generate_grid_single`: single-request packed grid planning, generation, and slicing helpers.
+- `src/generate_grid_multiple`: multi-request grid planning/generation helpers that preserve minimum cell resolution.
 - `src/shared`: common schemas, request validation, response writing, and image option utilities.
 
 ## Example

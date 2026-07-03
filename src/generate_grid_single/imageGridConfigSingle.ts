@@ -1,6 +1,6 @@
 import { imageSizeConstraints } from "../shared/imageRequestValidate.js"
 
-export const imageGridConfig = {
+export const imageGridConfigSingle = {
   honoredAspects: [0.5625, 0.6667, 1.0, 1.5, 1.7778] as readonly number[],
   honoredToleranceFraction: 0.04,
   desiredCellShortEdgeDefaultPx: 256,
