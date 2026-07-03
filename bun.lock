@@ -5,22 +5,22 @@
     "": {
       "name": "@adaptive-ds/codex-imagen",
       "dependencies": {
-        "@adaptive-ds/result": "link:@adaptive-ds/result",
+        "@adaptive-ds/result": "^0.6.0",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.4.11",
         "@types/bun": "latest",
         "@types/node": "^25.6.0",
         "typescript": "^6.0.3",
-        "valibot": "^1.3.1",
+        "valibot": "^1.3.1"
       },
       "peerDependencies": {
-        "valibot": "^1.2.0",
-      },
-    },
+        "valibot": "^1.2.0"
+      }
+    }
   },
   "packages": {
-    "@adaptive-ds/result": ["@adaptive-ds/result@link:@adaptive-ds/result", {}],
+    "@adaptive-ds/result": ["@adaptive-ds/result@0.6.0", "", { "peerDependencies": { "valibot": "^1.2.0" } }, "sha512-4N70Kfnyya4NG5AXgdtHlT7gkWbnIEElst+NV2D7vJkxfNeZvd5ustkByTQtjfWn5F6UiJBef1S1g4Fi9mrzNA=="],
 
     "@biomejs/biome": ["@biomejs/biome@2.5.2", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.5.2", "@biomejs/cli-darwin-x64": "2.5.2", "@biomejs/cli-linux-arm64": "2.5.2", "@biomejs/cli-linux-arm64-musl": "2.5.2", "@biomejs/cli-linux-x64": "2.5.2", "@biomejs/cli-linux-x64-musl": "2.5.2", "@biomejs/cli-win32-arm64": "2.5.2", "@biomejs/cli-win32-x64": "2.5.2" }, "bin": { "biome": "bin/biome" } }, "sha512-VQ3RCqr7JmDIX+w6stWYl+g/3bYofN3q2wDBHUKKc/c7i5QWrFKFBZYCYPWTE6agsUPMIZZe6/CMmVUfUAhkKA=="],
 
