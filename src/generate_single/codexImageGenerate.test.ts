@@ -49,6 +49,6 @@ describe("codexImageGenerate", () => {
     expect(result.data.revisedPrompt).toBe("revised")
     expect(existsSync(outputPath)).toBe(true)
     expect(readFileSync(outputPath).equals(pngHeader)).toBe(true)
-    expect(readFileSync(outputPath.replace(/\.[^.]*$/, ".txt"), "utf8")).toBe("small test\n")
+    expect(readFileSync(outputPath.replace(/\.[^.]*$/, ".txt"), "utf8")).toBe("Small test image\n")
   })
 })
