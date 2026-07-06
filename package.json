@@ -22,10 +22,8 @@
     "release": "bash ./ops/release.sh",
     "test": "bun test"
   },
-  "dependencies": {
-    "@adaptive-ds/result": "^0.6.0"
-  },
   "peerDependencies": {
+    "@adaptive-ds/result": "^0.6.0",
     "valibot": "^1.2.0"
   },
   "devDependencies": {
