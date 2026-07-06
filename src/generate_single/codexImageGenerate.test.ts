@@ -10,7 +10,11 @@ describe("codexImageGenerate", () => {
     rmSync(outputDir, { recursive: true, force: true })
     const outputPath = join(outputDir, "single.png")
     const pngHeader = Buffer.from("89504e470d0a1a0a", "hex")
-    const calls: Array<{ url: string; authorization: string | null; body: unknown }> = []
+    const calls: Array<{
+      url: string
+      authorization: string | null
+      body: unknown
+    }> = []
 
     const result = await codexImageGenerate({
       client: {
@@ -27,7 +31,12 @@ describe("codexImageGenerate", () => {
           return new Response(
             JSON.stringify({
               created: 1,
-              data: [{ b64_json: pngHeader.toString("base64"), revised_prompt: "revised" }],
+              data: [
+                {
+                  b64_json: pngHeader.toString("base64"),
+                  revised_prompt: "revised",
+                },
+              ],
               usage: { total_tokens: 1 },
             }),
             { status: 200, statusText: "OK" },
@@ -44,7 +53,11 @@ describe("codexImageGenerate", () => {
     if (!result.success) throw new Error(result.errorMessage)
     expect(calls[0]?.url).toBe("https://codex.example.test/v1/images/generations")
     expect(calls[0]?.authorization).toBe("Bearer test-token")
-    expect(calls[0]?.body).toMatchObject({ prompt: "small test image", n: 1, size: "1024x1024" })
+    expect(calls[0]?.body).toMatchObject({
+      prompt: "small test image",
+      n: 1,
+      size: "1024x1024",
+    })
     expect(result.data.outputPath).toBe(outputPath)
     expect(result.data.revisedPrompt).toBe("revised")
     expect(existsSync(outputPath)).toBe(true)

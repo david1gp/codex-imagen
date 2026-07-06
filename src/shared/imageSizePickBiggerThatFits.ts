@@ -44,7 +44,14 @@ export function imageSizePickBiggerThatFits(options: ImageSizePickBiggerThatFits
     const height = options.aspect >= 1 ? shortEdge : longEdge
     const size = `${width}x${height}` as const
     const valid = imageSizeValidate(model, size)
-    if (valid.success) return createResult({ width, height, size, aspect: width / height, pixels: width * height })
+    if (valid.success)
+      return createResult({
+        width,
+        height,
+        size,
+        aspect: width / height,
+        pixels: width * height,
+      })
   }
 
   return createResultError(op, `no valid ${model} size for aspect ${options.aspect.toFixed(4)}`)

@@ -50,7 +50,13 @@ export async function codexImageGenerate(options: CodexImageGenerateOptions): Pr
     writeTxt,
   } = optionsResult.output
 
-  const validateResult = imageRequestValidate({ model, size, background, inputFidelity: undefined, isEdit: false })
+  const validateResult = imageRequestValidate({
+    model,
+    size,
+    background,
+    inputFidelity: undefined,
+    isEdit: false,
+  })
   if (!validateResult.success) return validateResult
 
   const url = `${codexImagenBaseUrlNormalize(client.baseUrl)}/images/generations`

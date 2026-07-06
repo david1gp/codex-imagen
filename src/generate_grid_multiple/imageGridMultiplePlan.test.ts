@@ -21,7 +21,11 @@ function requestSizeValid(size: string): boolean {
 
 describe("imageGridMultiplePlan", () => {
   test("1920x512 x 10 -> 8 cells plus 2 cells without scaling below minimum", () => {
-    const plan = planOrThrow({ cellWidthPx: 1920, cellHeightPx: 512, cellCount: 10 })
+    const plan = planOrThrow({
+      cellWidthPx: 1920,
+      cellHeightPx: 512,
+      cellCount: 10,
+    })
     expect(plan.grids).toHaveLength(2)
 
     expect(plan.grids[0]).toMatchObject({
@@ -53,7 +57,11 @@ describe("imageGridMultiplePlan", () => {
   })
 
   test("1920x400 x 1 -> expands canvas height to satisfy 3:1 GPT Image 2 ratio", () => {
-    const plan = planOrThrow({ cellWidthPx: 1920, cellHeightPx: 400, cellCount: 1 })
+    const plan = planOrThrow({
+      cellWidthPx: 1920,
+      cellHeightPx: 400,
+      cellCount: 1,
+    })
     expect(plan.grids).toHaveLength(1)
     expect(plan.grids[0]).toMatchObject({
       cellStart: 0,
@@ -70,7 +78,12 @@ describe("imageGridMultiplePlan", () => {
   })
 
   test("1920x400 x 1 can use an empty cell instead of cropping", () => {
-    const plan = planOrThrow({ cellWidthPx: 1920, cellHeightPx: 400, cellCount: 1, cropToCellAspect: true })
+    const plan = planOrThrow({
+      cellWidthPx: 1920,
+      cellHeightPx: 400,
+      cellCount: 1,
+      cropToCellAspect: true,
+    })
     expect(plan.grids).toHaveLength(1)
     expect(plan.grids[0]).toMatchObject({
       cellCount: 1,
@@ -88,7 +101,11 @@ describe("imageGridMultiplePlan", () => {
   })
 
   test("1920x400 x 10 -> one valid grid at minimum slot resolution", () => {
-    const plan = planOrThrow({ cellWidthPx: 1920, cellHeightPx: 400, cellCount: 10 })
+    const plan = planOrThrow({
+      cellWidthPx: 1920,
+      cellHeightPx: 400,
+      cellCount: 10,
+    })
     expect(plan.grids).toHaveLength(1)
     expect(plan.grids[0]).toMatchObject({
       cellStart: 0,
@@ -104,7 +121,11 @@ describe("imageGridMultiplePlan", () => {
   })
 
   test("1800x300 x 3 -> rounds up and stacks rows to satisfy GPT Image 2 rules", () => {
-    const plan = planOrThrow({ cellWidthPx: 1800, cellHeightPx: 300, cellCount: 3 })
+    const plan = planOrThrow({
+      cellWidthPx: 1800,
+      cellHeightPx: 300,
+      cellCount: 3,
+    })
     expect(plan.grids).toHaveLength(1)
     expect(plan.grids[0]).toMatchObject({
       cellStart: 0,
@@ -121,7 +142,12 @@ describe("imageGridMultiplePlan", () => {
   })
 
   test("1800x300 x 3 can enlarge cells to preserve aspect without empty cells", () => {
-    const plan = planOrThrow({ cellWidthPx: 1800, cellHeightPx: 300, cellCount: 3, cropToCellAspect: true })
+    const plan = planOrThrow({
+      cellWidthPx: 1800,
+      cellHeightPx: 300,
+      cellCount: 3,
+      cropToCellAspect: true,
+    })
     expect(plan.grids).toHaveLength(1)
     expect(plan.grids[0]).toMatchObject({
       cellStart: 0,
@@ -145,8 +171,18 @@ describe("imageGridMultiplePlan", () => {
       { cellWidthPx: 1920, cellHeightPx: 400, cellCount: 1 },
       { cellWidthPx: 1920, cellHeightPx: 400, cellCount: 10 },
       { cellWidthPx: 1800, cellHeightPx: 300, cellCount: 3 },
-      { cellWidthPx: 1920, cellHeightPx: 400, cellCount: 1, cropToCellAspect: true },
-      { cellWidthPx: 1800, cellHeightPx: 300, cellCount: 3, cropToCellAspect: true },
+      {
+        cellWidthPx: 1920,
+        cellHeightPx: 400,
+        cellCount: 1,
+        cropToCellAspect: true,
+      },
+      {
+        cellWidthPx: 1800,
+        cellHeightPx: 300,
+        cellCount: 3,
+        cropToCellAspect: true,
+      },
     ]
 
     for (const request of cases) {
@@ -171,7 +207,19 @@ describe("imageGridMultiplePlan", () => {
 
   test("rejects invalid minimum cell dimensions", () => {
     expect(imageGridMultiplePlan({ cellWidthPx: 0, cellHeightPx: 512, cellCount: 1 }).success).toBe(false)
-    expect(imageGridMultiplePlan({ cellWidthPx: 1920, cellHeightPx: 512.5, cellCount: 1 }).success).toBe(false)
-    expect(imageGridMultiplePlan({ cellWidthPx: 1920, cellHeightPx: 512, cellCount: 0 }).success).toBe(false)
+    expect(
+      imageGridMultiplePlan({
+        cellWidthPx: 1920,
+        cellHeightPx: 512.5,
+        cellCount: 1,
+      }).success,
+    ).toBe(false)
+    expect(
+      imageGridMultiplePlan({
+        cellWidthPx: 1920,
+        cellHeightPx: 512,
+        cellCount: 0,
+      }).success,
+    ).toBe(false)
   })
 })

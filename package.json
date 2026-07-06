@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "rm -rf ./dist && bun tsc -p ./tsconfig.lib.json",
-    "format": "bunx biome check --write src",
+    "format": "biome format --write src package.json tsconfig.json tsconfig.lib.json biome.json",
     "release": "bash ./ops/release.sh",
     "test": "bun test"
   },
@@ -27,7 +27,7 @@
     "valibot": "^1.2.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.11",
+    "@biomejs/biome": "^2.5.2",
     "@types/bun": "latest",
     "@types/node": "^25.6.0",
     "typescript": "^6.0.3",

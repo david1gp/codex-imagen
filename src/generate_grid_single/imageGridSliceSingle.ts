@@ -22,7 +22,10 @@ export type ImageGridSliceSingleOptions = {
   writeTxt?: boolean
 }
 
-function imageGridDimensionsSingle(gridPath: string): { width: number; height: number } {
+function imageGridDimensionsSingle(gridPath: string): {
+  width: number
+  height: number
+} {
   const [width, height] = execFileSync("magick", ["identify", "-format", "%w %h", gridPath])
     .toString()
     .trim()
@@ -39,10 +42,20 @@ function imageGridCellCropRectSingle(
   const cellAspect = cellW / cellH
   if (targetAspect < cellAspect) {
     const width = Math.round(cellH * targetAspect)
-    return { width, height: cellH, offsetX: Math.round((cellW - width) / 2), offsetY: 0 }
+    return {
+      width,
+      height: cellH,
+      offsetX: Math.round((cellW - width) / 2),
+      offsetY: 0,
+    }
   }
   const height = Math.round(cellW / targetAspect)
-  return { width: cellW, height, offsetX: 0, offsetY: Math.round((cellH - height) / 2) }
+  return {
+    width: cellW,
+    height,
+    offsetX: 0,
+    offsetY: Math.round((cellH - height) / 2),
+  }
 }
 
 export function imageGridSliceSingle(options: ImageGridSliceSingleOptions): Result<string[]> {

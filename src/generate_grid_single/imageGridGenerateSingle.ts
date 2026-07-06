@@ -64,5 +64,8 @@ export async function imageGridGenerateSingle(
   })
   if (!sliceResult.success) return sliceResult
 
-  return createResult({ gridPath: generateResult.data.outputPath, cellPaths: sliceResult.data })
+  return createResult({
+    gridPath: generateResult.data.outputPath,
+    cellPaths: sliceResult.data,
+  })
 }

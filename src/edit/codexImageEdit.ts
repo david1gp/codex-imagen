@@ -77,7 +77,13 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     writeTxt,
   } = optionsResult.output
 
-  const validateResult = imageRequestValidate({ model, size, background, inputFidelity, isEdit: true })
+  const validateResult = imageRequestValidate({
+    model,
+    size,
+    background,
+    inputFidelity,
+    isEdit: true,
+  })
   if (!validateResult.success) return validateResult
 
   const form = new FormData()
@@ -95,11 +101,19 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     if (user !== undefined) form.set("user", user)
     form.append(
       "image[]",
-      new Blob([readFileSync(inputImagePath)], { type: imageMimeFromPath(inputImagePath) }),
+      new Blob([readFileSync(inputImagePath)], {
+        type: imageMimeFromPath(inputImagePath),
+      }),
       basename(inputImagePath),
     )
     if (maskPath !== undefined) {
-      form.append("mask", new Blob([readFileSync(maskPath)], { type: imageMimeFromPath(maskPath) }), basename(maskPath))
+      form.append(
+        "mask",
+        new Blob([readFileSync(maskPath)], {
+          type: imageMimeFromPath(maskPath),
+        }),
+        basename(maskPath),
+      )
     }
   } catch (error) {
     return createResultError(op, error instanceof Error ? error.message : String(error))

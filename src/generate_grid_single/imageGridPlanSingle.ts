@@ -49,7 +49,10 @@ function imageGridCandidateEvaluateSingle(
       ? cellAspect / renderedCellAspect
       : renderedCellAspect / cellAspect
 
-  const canvasResult = imageSizePickBiggerThatFits({ aspect: requestAspect, maxEdgePx })
+  const canvasResult = imageSizePickBiggerThatFits({
+    aspect: requestAspect,
+    maxEdgePx,
+  })
   if (!canvasResult.success) return createResultError(op, canvasResult.errorMessage)
   const { width, height, size } = canvasResult.data
   const estCellShortEdgePx = Math.round(Math.min(width / cols, height / rows) * keep)
