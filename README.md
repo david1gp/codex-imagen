@@ -43,4 +43,69 @@ const result = await codexImageGenerate({
 })
 ```
 
-Callers own secret/env/file resolution. This package does not read environment variables or key files.
+Library callers still supply client configuration directly; library workflows do not load environment variables or key files.
+
+## CLI
+
+Install the package, then invoke the executable with `bunx` (or install it globally and use `codex-imagen` directly):
+
+```sh
+bun add @adaptive-ds/codex-imagen
+bunx codex-imagen --help
+```
+
+The CLI exposes only `generate` and `edit`. It reads these credentials:
+
+```dotenv
+CODEX_IMAGE_BASE_URL=https://your-image-endpoint.example
+CODEX_IMAGE_API_KEY=your-api-key
+```
+
+By default it loads `.env` from the current working directory. A missing default `.env` is allowed, and existing environment variables take precedence over values loaded from it. Use `--dotenv-path PATH` to require a specific dotenv file.
+
+Common flags:
+
+| Flag | Values | Default |
+| --- | --- | --- |
+| `--dotenv-path` | Dotenv file path | `.env` in the current working directory; missing file allowed |
+| `--request-timeout-ms` | Positive integer milliseconds | `300000` |
+| `--help` | — | — |
+
+### `generate`
+
+```sh
+bunx codex-imagen generate \
+  --prompt "A clear glass orb on a blue background" \
+  --output-path ./out/orb.png
+```
+
+Required flags: `--prompt`, `--output-path`.
+
+| Flag | Values | Default |
+| --- | --- | --- |
+| `--model` | `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1`, `gpt-image-1-mini` | `gpt-image-2` |
+| `--size` | `auto` or `WxH` | `2048x1152` |
+| `--quality` | `low`, `medium`, `high`, `auto` | `auto` |
+| `--background` | `transparent`, `opaque`, `auto` | `auto` |
+| `--output-format` | `png`, `jpeg`, `webp` | `png` |
+| `--output-compression` | Integer `0`–`100` | `100` |
+| `--moderation` | `auto`, `low` | `auto` |
+| `--user` | String | — |
+| `--write-txt` | Boolean; use `--write-txt=false` to disable | `true` |
+
+### `edit`
+
+```sh
+bunx codex-imagen edit \
+  --input-image-path ./in/source.png \
+  --prompt "Replace the background with a sunset" \
+  --output-path ./out/edited.png \
+  --mask-path ./in/mask.png \
+  --input-fidelity high
+```
+
+Required flags: `--input-image-path`, `--prompt`, `--output-path`.
+
+Edit-only flags are `--mask-path` (optional path, omitted by default) and `--input-fidelity` (`low` or `high`, omitted by default). Edit also accepts the `generate` flags above, with these defaults: `--size 1536x1024`; all other shared image-option defaults are unchanged.
+
+Successful commands print the output image path to stdout; failures use a nonzero exit status and stderr.
