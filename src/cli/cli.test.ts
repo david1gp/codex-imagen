@@ -76,14 +76,44 @@ function imageResponse(): Response {
 }
 
 describe("codex-imagen CLI", () => {
-  test("exposes only generate and edit routes", async () => {
+  test("exposes generate, edit, and version routes", async () => {
     await withTemporaryDirectory(async (directory) => {
       const result = await runCli(["--help"], directory)
 
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toContain("generate")
       expect(result.stdout).toContain("edit")
+      expect(result.stdout).toContain("version")
       expect(result.stdout).not.toContain("grid")
+    })
+  })
+
+  test("keeps plain version output free of credentials and network access", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const result = await runCli(["version"], directory)
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe("")
+      expect(result.stdout).toBe("codex-imagen v0.2.0\n")
+    })
+  })
+
+  test("prints package and runtime metadata in verbose version output", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const result = await runCli(["version", "--verbose"], directory)
+
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toBe("")
+      expect(result.stdout).toContain("codex-imagen v0.2.0\n")
+      expect(result.stdout).toContain("description: Type-safe codex-lb/OpenAI-compatible image generation helpers")
+      expect(result.stdout).toContain("author: unavailable")
+      expect(result.stdout).toContain("license: MIT")
+      expect(result.stdout).toContain("project: https://github.com/david1gp/codex-imagen")
+      expect(result.stdout).toContain("installation type: development checkout")
+      expect(result.stdout).toContain(`runtime: bun ${Bun.version}`)
+      expect(result.stdout).toContain("runtime requirements: unavailable")
+      expect(result.stdout).toContain(`platform: ${process.platform} ${process.arch} (OS release `)
+      expect(result.stdout).toMatch(/executable: .+\nexecutable target: .+\n/)
     })
   })
 
@@ -296,7 +326,7 @@ describe("codex-imagen CLI", () => {
         expect(result.stdout).toBe(`${outputPath}\n`)
         expect(environmentRequestCount).toBe(1)
         expect(dotenvRequestCount).toBe(0)
-        expect(authorization).toBe("Bearer environment-token")
+        expect(authorization as string | null).toBe("Bearer environment-token")
         expect(existsSync(outputPath)).toBe(true)
       } finally {
         await Promise.all([environmentServer.stop(true), dotenvServer.stop(true)])

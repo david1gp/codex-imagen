@@ -5,6 +5,7 @@ import { type CliCommonFlags, cliCommonFlags } from "./cli/cliCommonFlags.js"
 import { cliImageClientFromFlags } from "./cli/cliImageClientFromFlags.js"
 import { cliImageResultPresent } from "./cli/cliImageResultPresent.js"
 import { cliResultError } from "./cli/cliResultError.js"
+import { cliVersionPresent } from "./cli/cliVersionPresent.js"
 import type { CodexImageEditOptions } from "./edit/codexImageEdit.js"
 import { codexImageEdit } from "./edit/codexImageEdit.js"
 import type { CodexImageGenerateOptions } from "./generate_single/codexImageGenerate.js"
@@ -18,6 +19,7 @@ import { imageQuality } from "./shared/imageQuality.js"
 
 type CliGenerateFlags = CliCommonFlags & Omit<CodexImageGenerateOptions, "client">
 type CliEditFlags = CliCommonFlags & Omit<CodexImageEditOptions, "client">
+type CliVersionFlags = { verbose?: boolean }
 
 const cliGenerateFlags = {
   ...cliCommonFlags,
@@ -196,8 +198,24 @@ const editCommand = buildCommand({
   docs: { brief: "Edit an image." },
 })
 
+const versionCommand = buildCommand({
+  func(this: CommandContext, flags: CliVersionFlags) {
+    cliVersionPresent(flags.verbose === true, this.process)
+  },
+  parameters: {
+    flags: {
+      verbose: {
+        kind: "boolean" as const,
+        optional: true as const,
+        brief: "Include package and runtime metadata",
+      },
+    },
+  },
+  docs: { brief: "Print the CLI version." },
+})
+
 const root = buildRouteMap({
-  routes: { generate: generateCommand, edit: editCommand },
+  routes: { generate: generateCommand, edit: editCommand, version: versionCommand },
   docs: { brief: "Generate and edit images." },
 })
 
