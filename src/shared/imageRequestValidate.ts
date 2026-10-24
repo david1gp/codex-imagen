@@ -1,6 +1,7 @@
 import { createResult, createResultError, type Result } from "#result"
 import type { ImageBackground } from "./imageBackground.js"
 import type { ImageInputFidelity } from "./imageInputFidelity.js"
+import type { ImageQuality } from "./imageQuality.js"
 import { imageModel } from "./imageModel.js"
 
 export const imageSizeConstraints = {
@@ -12,12 +13,19 @@ export const imageSizeConstraints = {
 } as const
 
 const LEGACY_FIXED_SIZES = new Set(["1024x1024", "1536x1024", "1024x1536", "auto"])
-const INPUT_FIDELITY_MODELS = new Set<string>([imageModel.gptImage15, imageModel.gptImage1])
+const CUSTOM_SIZE_MODELS = new Set<string>([
+  imageModel.gptImage2,
+  imageModel.gptImage25Sunburst,
+  imageModel.gptImage25Flare,
+])
+const EXTENDED_QUALITY_MODELS = new Set<string>([imageModel.gptImage25Sunburst, imageModel.gptImage25Flare])
+const INPUT_FIDELITY_MODELS = new Set<string>([imageModel.gptImage15, imageModel.gptImage1, imageModel.gptImage1Mini])
 const SIZE_PATTERN = /^(\d+)x(\d+)$/
 
 export type ImageRequestValidateInput = {
   model: string
   size: string
+  quality: ImageQuality
   background: ImageBackground
   inputFidelity: ImageInputFidelity | undefined
   isEdit: boolean
@@ -25,16 +33,25 @@ export type ImageRequestValidateInput = {
 
 export function imageRequestValidate(input: ImageRequestValidateInput): Result<void> {
   const op = "imageRequestValidate"
-  const { model, size, background, inputFidelity, isEdit } = input
+  const { model, size, quality, background, inputFidelity, isEdit } = input
+
+  if ((quality === "xhigh" || quality === "max") && !EXTENDED_QUALITY_MODELS.has(model)) {
+    return createResultError(op, `quality='${quality}' is only supported by gpt-image-2.5 models`)
+  }
 
   if (model === imageModel.gptImage2) {
     if (background === "transparent") {
       return createResultError(op, "background='transparent' is not supported by gpt-image-2")
     }
     if (inputFidelity !== undefined) return createResultError(op, "input_fidelity is not supported by gpt-image-2")
+  } else if (CUSTOM_SIZE_MODELS.has(model)) {
+    if (inputFidelity !== undefined) return createResultError(op, `input_fidelity is not supported by ${model}`)
   } else if (inputFidelity !== undefined) {
     if (!isEdit) return createResultError(op, "input_fidelity is only supported on image edits")
     if (!INPUT_FIDELITY_MODELS.has(model)) return createResultError(op, `input_fidelity is not supported by ${model}`)
+    if (model === imageModel.gptImage1Mini && inputFidelity === "high") {
+      return createResultError(op, "input_fidelity='high' is only supported by gpt-image-1 and gpt-image-1.5")
+    }
   }
 
   return imageSizeValidate(model, size)
@@ -48,7 +65,7 @@ export function imageSizeValidate(model: string, size: string): Result<void> {
 
   const width = Number(match[1])
   const height = Number(match[2])
-  if (model === imageModel.gptImage2) return imageSizeValidateGptImage2(width, height)
+  if (CUSTOM_SIZE_MODELS.has(model)) return imageSizeValidateGptImage2(width, height)
   if (!LEGACY_FIXED_SIZES.has(size)) {
     return createResultError(
       op,
@@ -58,6 +75,7 @@ export function imageSizeValidate(model: string, size: string): Result<void> {
   return createResult(undefined)
 }
 
+// Published custom-size constraints are identical for gpt-image-2 and gpt-image-2.5 models.
 export function imageSizeValidateGptImage2(width: number, height: number): Result<void> {
   const op = "imageSizeValidateGptImage2"
   const { gptImage2DimMultiple, gptImage2MaxEdge, gptImage2MinPixels, gptImage2MaxPixels, gptImage2RatioMax } =

@@ -4,6 +4,8 @@ export const imageQuality = {
   low: "low",
   medium: "medium",
   high: "high",
+  xhigh: "xhigh",
+  max: "max",
   auto: "auto",
 } as const
 
