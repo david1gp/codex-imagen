@@ -24,6 +24,7 @@ export const codexImageGenerateOptionsSchema = a.object({
   outputCompression: a.optional(imageOutputCompressionSchema, imageOutputCompressionDefault),
   moderation: a.optional(imageModerationSchema, imageModerationDefault),
   user: a.optional(a.string()),
+  safetyIdentifier: a.optional(a.pipe(a.string(), a.minLength(1), a.maxLength(128))),
   writeTxt: a.optional(a.boolean(), true),
 })
 
@@ -47,12 +48,14 @@ export async function codexImageGenerate(options: CodexImageGenerateOptions): Pr
     outputCompression,
     moderation,
     user,
+    safetyIdentifier,
     writeTxt,
   } = optionsResult.output
 
   const validateResult = imageRequestValidate({
     model,
     size,
+    quality,
     background,
     inputFidelity: undefined,
     isEdit: false,
@@ -84,6 +87,7 @@ export async function codexImageGenerate(options: CodexImageGenerateOptions): Pr
         output_compression: outputCompression,
         moderation,
         ...(user !== undefined ? { user } : {}),
+        ...(safetyIdentifier !== undefined ? { safety_identifier: safetyIdentifier } : {}),
       }),
       signal: AbortSignal.timeout(client.requestTimeoutMs),
     })

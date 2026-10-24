@@ -79,7 +79,13 @@ const cliGenerateFlags = {
     kind: "parsed" as const,
     parse: String,
     optional: true as const,
-    brief: "End-user identifier",
+    brief: "End-user identifier (deprecated, prefer --safety-identifier)",
+  },
+  safetyIdentifier: {
+    kind: "parsed" as const,
+    parse: String,
+    optional: true as const,
+    brief: "Hashed end-user safety identifier (max 128 chars)",
   },
   writeTxt: {
     kind: "boolean" as const,
@@ -176,7 +182,13 @@ const cliEditFlags = {
     kind: "parsed" as const,
     parse: String,
     optional: true as const,
-    brief: "End-user identifier",
+    brief: "End-user identifier (deprecated, prefer --safety-identifier)",
+  },
+  safetyIdentifier: {
+    kind: "parsed" as const,
+    parse: String,
+    optional: true as const,
+    brief: "Hashed end-user safety identifier (max 128 chars)",
   },
   writeTxt: {
     kind: "boolean" as const,

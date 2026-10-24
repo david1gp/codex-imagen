@@ -48,6 +48,7 @@ export const codexImageEditOptionsSchema = a.object({
   moderation: a.optional(imageModerationSchema, imageModerationDefault),
   inputFidelity: a.optional(imageInputFidelitySchema),
   user: a.optional(a.string()),
+  safetyIdentifier: a.optional(a.pipe(a.string(), a.minLength(1), a.maxLength(128))),
   writeTxt: a.optional(a.boolean(), true),
 })
 
@@ -74,12 +75,14 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     moderation,
     inputFidelity,
     user,
+    safetyIdentifier,
     writeTxt,
   } = optionsResult.output
 
   const validateResult = imageRequestValidate({
     model,
     size,
+    quality,
     background,
     inputFidelity,
     isEdit: true,
@@ -99,6 +102,7 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     form.set("moderation", moderation)
     if (inputFidelity !== undefined) form.set("input_fidelity", inputFidelity)
     if (user !== undefined) form.set("user", user)
+    if (safetyIdentifier !== undefined) form.set("safety_identifier", safetyIdentifier)
     form.append(
       "image[]",
       new Blob([readFileSync(inputImagePath)], {

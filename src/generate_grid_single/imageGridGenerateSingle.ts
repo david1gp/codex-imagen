@@ -24,6 +24,7 @@ export type ImageGridGenerateSingleOptions = {
   outputCompression?: number
   moderation?: ImageModeration
   user?: string
+  safetyIdentifier?: string
   writeGridTxt?: boolean
   writeCellTxt?: boolean
   cropPaddingFraction?: number
@@ -49,6 +50,7 @@ export async function imageGridGenerateSingle(
     outputCompression: options.outputCompression,
     moderation: options.moderation,
     user: options.user,
+    safetyIdentifier: options.safetyIdentifier,
     writeTxt: options.writeGridTxt ?? false,
   })
   if (!generateResult.success) return generateResult
