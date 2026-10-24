@@ -6,13 +6,12 @@ import { codexImagenBaseUrlNormalize, codexImagenClientSchema } from "../shared/
 import type { CodexImageResult } from "../shared/codexImageResultWrite.js"
 import { codexImageResultWrite } from "../shared/codexImageResultWrite.js"
 import { imageBackgroundDefault, imageBackgroundSchema } from "../shared/imageBackground.js"
-import { imageInputFidelitySchema } from "../shared/imageInputFidelity.js"
 import { imageModelDefault, imageModelSchema } from "../shared/imageModel.js"
 import { imageModerationDefault, imageModerationSchema } from "../shared/imageModeration.js"
 import { imageOutputCompressionDefault, imageOutputCompressionSchema } from "../shared/imageOutputCompression.js"
 import { imageOutputFormatDefault, imageOutputFormatSchema } from "../shared/imageOutputFormat.js"
 import { imageQualityDefault, imageQualitySchema } from "../shared/imageQuality.js"
-import { imageRequestValidate } from "../shared/imageRequestValidate.js"
+import { imageSizeValidate } from "../shared/imageRequestValidate.js"
 import { imageSizeCommon, imageSizeSchema } from "../shared/imageSize.js"
 
 const imageMimeByExtension: Record<string, string> = {
@@ -46,7 +45,6 @@ export const codexImageEditOptionsSchema = a.object({
   outputFormat: a.optional(imageOutputFormatSchema, imageOutputFormatDefault),
   outputCompression: a.optional(imageOutputCompressionSchema, imageOutputCompressionDefault),
   moderation: a.optional(imageModerationSchema, imageModerationDefault),
-  inputFidelity: a.optional(imageInputFidelitySchema),
   user: a.optional(a.string()),
   safetyIdentifier: a.optional(a.pipe(a.string(), a.minLength(1), a.maxLength(128))),
   writeTxt: a.optional(a.boolean(), true),
@@ -73,20 +71,12 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     outputFormat,
     outputCompression,
     moderation,
-    inputFidelity,
     user,
     safetyIdentifier,
     writeTxt,
   } = optionsResult.output
 
-  const validateResult = imageRequestValidate({
-    model,
-    size,
-    quality,
-    background,
-    inputFidelity,
-    isEdit: true,
-  })
+  const validateResult = imageSizeValidate(size)
   if (!validateResult.success) return validateResult
 
   const form = new FormData()
@@ -100,7 +90,6 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     form.set("output_format", outputFormat)
     form.set("output_compression", String(outputCompression))
     form.set("moderation", moderation)
-    if (inputFidelity !== undefined) form.set("input_fidelity", inputFidelity)
     if (user !== undefined) form.set("user", user)
     if (safetyIdentifier !== undefined) form.set("safety_identifier", safetyIdentifier)
     form.append(

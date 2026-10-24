@@ -1,103 +1,42 @@
 import { createResult, createResultError, type Result } from "#result"
-import type { ImageBackground } from "./imageBackground.js"
-import type { ImageInputFidelity } from "./imageInputFidelity.js"
-import type { ImageQuality } from "./imageQuality.js"
-import { imageModel } from "./imageModel.js"
 
 export const imageSizeConstraints = {
-  gptImage2DimMultiple: 16,
-  gptImage2MaxEdge: 3840,
-  gptImage2MinPixels: 655_360,
-  gptImage2MaxPixels: 8_294_400,
-  gptImage2RatioMax: 3,
+  dimMultiple: 16,
+  maxEdge: 3840,
+  minPixels: 655_360,
+  maxPixels: 8_294_400,
+  ratioMax: 3,
 } as const
 
-const LEGACY_FIXED_SIZES = new Set(["1024x1024", "1536x1024", "1024x1536", "auto"])
-const CUSTOM_SIZE_MODELS = new Set<string>([
-  imageModel.gptImage2,
-  imageModel.gptImage25Sunburst,
-  imageModel.gptImage25Flare,
-])
-const EXTENDED_QUALITY_MODELS = new Set<string>([imageModel.gptImage25Sunburst, imageModel.gptImage25Flare])
-const INPUT_FIDELITY_MODELS = new Set<string>([imageModel.gptImage15, imageModel.gptImage1, imageModel.gptImage1Mini])
 const SIZE_PATTERN = /^(\d+)x(\d+)$/
 
-export type ImageRequestValidateInput = {
-  model: string
-  size: string
-  quality: ImageQuality
-  background: ImageBackground
-  inputFidelity: ImageInputFidelity | undefined
-  isEdit: boolean
-}
-
-export function imageRequestValidate(input: ImageRequestValidateInput): Result<void> {
-  const op = "imageRequestValidate"
-  const { model, size, quality, background, inputFidelity, isEdit } = input
-
-  if ((quality === "xhigh" || quality === "max") && !EXTENDED_QUALITY_MODELS.has(model)) {
-    return createResultError(op, `quality='${quality}' is only supported by gpt-image-2.5 models`)
-  }
-
-  if (model === imageModel.gptImage2) {
-    if (background === "transparent") {
-      return createResultError(op, "background='transparent' is not supported by gpt-image-2")
-    }
-    if (inputFidelity !== undefined) return createResultError(op, "input_fidelity is not supported by gpt-image-2")
-  } else if (CUSTOM_SIZE_MODELS.has(model)) {
-    if (inputFidelity !== undefined) return createResultError(op, `input_fidelity is not supported by ${model}`)
-  } else if (inputFidelity !== undefined) {
-    if (!isEdit) return createResultError(op, "input_fidelity is only supported on image edits")
-    if (!INPUT_FIDELITY_MODELS.has(model)) return createResultError(op, `input_fidelity is not supported by ${model}`)
-    if (model === imageModel.gptImage1Mini && inputFidelity === "high") {
-      return createResultError(op, "input_fidelity='high' is only supported by gpt-image-1 and gpt-image-1.5")
-    }
-  }
-
-  return imageSizeValidate(model, size)
-}
-
-export function imageSizeValidate(model: string, size: string): Result<void> {
+export function imageSizeValidate(size: string): Result<void> {
   const op = "imageSizeValidate"
   if (size === "auto") return createResult(undefined)
   const match = SIZE_PATTERN.exec(size)
   if (!match) return createResultError(op, `Invalid size '${size}'. Expected 'auto' or WxH.`)
 
-  const width = Number(match[1])
-  const height = Number(match[2])
-  if (CUSTOM_SIZE_MODELS.has(model)) return imageSizeValidateGptImage2(width, height)
-  if (!LEGACY_FIXED_SIZES.has(size)) {
-    return createResultError(
-      op,
-      `Invalid size '${size}' for model '${model}'. Allowed: 1024x1024, 1536x1024, 1024x1536, auto.`,
-    )
-  }
-  return createResult(undefined)
+  return imageSizeValidateDimensions(Number(match[1]), Number(match[2]))
 }
 
-// Published custom-size constraints are identical for gpt-image-2 and gpt-image-2.5 models.
-export function imageSizeValidateGptImage2(width: number, height: number): Result<void> {
-  const op = "imageSizeValidateGptImage2"
-  const { gptImage2DimMultiple, gptImage2MaxEdge, gptImage2MinPixels, gptImage2MaxPixels, gptImage2RatioMax } =
-    imageSizeConstraints
+export function imageSizeValidateDimensions(width: number, height: number): Result<void> {
+  const op = "imageSizeValidateDimensions"
+  const { dimMultiple, maxEdge, minPixels, maxPixels, ratioMax } = imageSizeConstraints
 
   if (width <= 0 || height <= 0) return createResultError(op, "size dimensions must be positive integers")
-  if (width % gptImage2DimMultiple !== 0 || height % gptImage2DimMultiple !== 0) {
-    return createResultError(op, `size dimensions must be multiples of ${gptImage2DimMultiple} for gpt-image-2`)
+  if (width % dimMultiple !== 0 || height % dimMultiple !== 0) {
+    return createResultError(op, `size dimensions must be multiples of ${dimMultiple}`)
   }
-  if (Math.max(width, height) > gptImage2MaxEdge) {
-    return createResultError(op, `size edges must be <= ${gptImage2MaxEdge} px for gpt-image-2`)
+  if (Math.max(width, height) > maxEdge) {
+    return createResultError(op, `size edges must be <= ${maxEdge} px`)
   }
   const ratio = Math.max(width, height) / Math.min(width, height)
-  if (ratio > gptImage2RatioMax) {
-    return createResultError(op, `size aspect ratio must be at most ${gptImage2RatioMax}:1 for gpt-image-2`)
+  if (ratio > ratioMax) {
+    return createResultError(op, `size aspect ratio must be at most ${ratioMax}:1`)
   }
   const pixels = width * height
-  if (pixels < gptImage2MinPixels || pixels > gptImage2MaxPixels) {
-    return createResultError(
-      op,
-      `size total pixels must be between ${gptImage2MinPixels} and ${gptImage2MaxPixels} for gpt-image-2`,
-    )
+  if (pixels < minPixels || pixels > maxPixels) {
+    return createResultError(op, `size total pixels must be between ${minPixels} and ${maxPixels}`)
   }
   return createResult(undefined)
 }

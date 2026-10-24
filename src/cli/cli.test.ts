@@ -143,7 +143,7 @@ describe("codex-imagen CLI", () => {
               "--output-path",
               outputPath,
               "--model",
-              "gpt-image-2",
+              "gpt-image-2.5-sunburst",
               "--size",
               "1024x1024",
               "--quality",
@@ -171,7 +171,7 @@ describe("codex-imagen CLI", () => {
           expect(requestUrl).toBe(`${baseUrl}/images/generations`)
           expect(authorization).toBe("Bearer dotenv-token")
           expect(requestBody).toEqual({
-            model: "gpt-image-2",
+            model: "gpt-image-2.5-sunburst",
             prompt: "A lighthouse at dawn",
             n: 1,
             size: "1024x1024",
@@ -225,8 +225,6 @@ describe("codex-imagen CLI", () => {
               outputPath,
               "--mask-path",
               maskPath,
-              "--model",
-              "gpt-image-1",
               "--size",
               "1536x1024",
               "--quality",
@@ -239,8 +237,6 @@ describe("codex-imagen CLI", () => {
               "42",
               "--moderation",
               "low",
-              "--input-fidelity",
-              "high",
               "--user",
               "edit-user",
               "--dotenv-path",
@@ -257,7 +253,7 @@ describe("codex-imagen CLI", () => {
           expect(authorization).toBe("Bearer explicit-token")
           expect(form).toBeDefined()
           if (!form) throw new Error("mock provider did not receive a form")
-          expect(form.get("model")).toBe("gpt-image-1")
+          expect(form.get("model")).toBe("gpt-image-2.5-sunburst")
           expect(form.get("prompt")).toBe("Remove the clouds")
           expect(form.get("n")).toBe("1")
           expect(form.get("size")).toBe("1536x1024")
@@ -266,7 +262,6 @@ describe("codex-imagen CLI", () => {
           expect(form.get("output_format")).toBe("jpeg")
           expect(form.get("output_compression")).toBe("42")
           expect(form.get("moderation")).toBe("low")
-          expect(form.get("input_fidelity")).toBe("high")
           expect(form.get("user")).toBe("edit-user")
 
           const image = form.get("image[]")

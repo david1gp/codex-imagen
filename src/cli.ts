@@ -11,7 +11,6 @@ import { codexImageEdit } from "./edit/codexImageEdit.js"
 import type { CodexImageGenerateOptions } from "./generate_single/codexImageGenerate.js"
 import { codexImageGenerate } from "./generate_single/codexImageGenerate.js"
 import { imageBackground } from "./shared/imageBackground.js"
-import { imageInputFidelity } from "./shared/imageInputFidelity.js"
 import { imageModel } from "./shared/imageModel.js"
 import { imageModeration } from "./shared/imageModeration.js"
 import { imageOutputFormat } from "./shared/imageOutputFormat.js"
@@ -171,12 +170,6 @@ const cliEditFlags = {
     values: Object.values(imageModeration),
     optional: true as const,
     brief: "Moderation level",
-  },
-  inputFidelity: {
-    kind: "enum" as const,
-    values: Object.values(imageInputFidelity),
-    optional: true as const,
-    brief: "Input fidelity",
   },
   user: {
     kind: "parsed" as const,

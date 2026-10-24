@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { imageModel } from "../shared/imageModel.js"
-import { imageRequestValidate, imageSizeConstraints } from "../shared/imageRequestValidate.js"
+import { imageSizeConstraints, imageSizeValidate } from "../shared/imageRequestValidate.js"
 import { imageGridMultiplePlan } from "./imageGridMultiplePlan.js"
 
 function planOrThrow(request: Parameters<typeof imageGridMultiplePlan>[0]) {
@@ -10,13 +9,7 @@ function planOrThrow(request: Parameters<typeof imageGridMultiplePlan>[0]) {
 }
 
 function requestSizeValid(size: string): boolean {
-  return imageRequestValidate({
-    model: imageModel.gptImage2,
-    size,
-    background: "opaque",
-    inputFidelity: undefined,
-    isEdit: false,
-  }).success
+  return imageSizeValidate(size).success
 }
 
 describe("imageGridMultiplePlan", () => {
@@ -56,7 +49,7 @@ describe("imageGridMultiplePlan", () => {
     })
   })
 
-  test("1920x400 x 1 -> expands canvas height to satisfy 3:1 GPT Image 2 ratio", () => {
+  test("1920x400 x 1 -> expands canvas height to satisfy 3:1 image ratio", () => {
     const plan = planOrThrow({
       cellWidthPx: 1920,
       cellHeightPx: 400,
@@ -120,7 +113,7 @@ describe("imageGridMultiplePlan", () => {
     expect(plan.grids[0]?.experimental).toBe(true)
   })
 
-  test("1800x300 x 3 -> rounds up and stacks rows to satisfy GPT Image 2 rules", () => {
+  test("1800x300 x 3 -> rounds up and stacks rows to satisfy image size rules", () => {
     const plan = planOrThrow({
       cellWidthPx: 1800,
       cellHeightPx: 300,
@@ -165,7 +158,7 @@ describe("imageGridMultiplePlan", () => {
     })
   })
 
-  test("all planned request sizes satisfy GPT Image 2 hard rules and preserve minimum slice dimensions", () => {
+  test("all planned request sizes satisfy image size rules and preserve minimum slice dimensions", () => {
     const cases = [
       { cellWidthPx: 1920, cellHeightPx: 512, cellCount: 10 },
       { cellWidthPx: 1920, cellHeightPx: 400, cellCount: 1 },
@@ -189,16 +182,14 @@ describe("imageGridMultiplePlan", () => {
       const plan = planOrThrow(request)
       for (const grid of plan.grids) {
         expect(requestSizeValid(grid.requestSize)).toBe(true)
-        expect(grid.requestWidthPx % imageSizeConstraints.gptImage2DimMultiple).toBe(0)
-        expect(grid.requestHeightPx % imageSizeConstraints.gptImage2DimMultiple).toBe(0)
-        expect(Math.max(grid.requestWidthPx, grid.requestHeightPx)).toBeLessThanOrEqual(
-          imageSizeConstraints.gptImage2MaxEdge,
-        )
+        expect(grid.requestWidthPx % imageSizeConstraints.dimMultiple).toBe(0)
+        expect(grid.requestHeightPx % imageSizeConstraints.dimMultiple).toBe(0)
+        expect(Math.max(grid.requestWidthPx, grid.requestHeightPx)).toBeLessThanOrEqual(imageSizeConstraints.maxEdge)
         expect(
           Math.max(grid.requestWidthPx, grid.requestHeightPx) / Math.min(grid.requestWidthPx, grid.requestHeightPx),
-        ).toBeLessThanOrEqual(imageSizeConstraints.gptImage2RatioMax)
-        expect(grid.pixels).toBeGreaterThanOrEqual(imageSizeConstraints.gptImage2MinPixels)
-        expect(grid.pixels).toBeLessThanOrEqual(imageSizeConstraints.gptImage2MaxPixels)
+        ).toBeLessThanOrEqual(imageSizeConstraints.ratioMax)
+        expect(grid.pixels).toBeGreaterThanOrEqual(imageSizeConstraints.minPixels)
+        expect(grid.pixels).toBeLessThanOrEqual(imageSizeConstraints.maxPixels)
         expect(grid.sliceWidthPx).toBeGreaterThanOrEqual(request.cellWidthPx)
         expect(grid.sliceHeightPx).toBeGreaterThanOrEqual(request.cellHeightPx)
       }

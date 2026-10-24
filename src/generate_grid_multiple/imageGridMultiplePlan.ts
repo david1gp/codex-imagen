@@ -1,5 +1,5 @@
 import { createResult, createResultError, type Result } from "#result"
-import { imageSizeConstraints, imageSizeValidateGptImage2 } from "../shared/imageRequestValidate.js"
+import { imageSizeConstraints, imageSizeValidateDimensions } from "../shared/imageRequestValidate.js"
 
 export type ImageGridMultiplePlanRequest = {
   cellWidthPx: number
@@ -80,17 +80,17 @@ function imageGridMultipleAspectCandidateCreate(
   const capacityCellCount = cols * rows
   if (capacityCellCount < cellCount) return undefined
 
-  const { gptImage2DimMultiple } = imageSizeConstraints
-  const minWidth = ceilToMultiple(cols * cellWidthPx, gptImage2DimMultiple)
-  const minHeight = ceilToMultiple(rows * cellHeightPx, gptImage2DimMultiple)
+  const { dimMultiple } = imageSizeConstraints
+  const minWidth = ceilToMultiple(cols * cellWidthPx, dimMultiple)
+  const minHeight = ceilToMultiple(rows * cellHeightPx, dimMultiple)
   let best: ImageGridMultipleCandidate | undefined
 
-  for (let width = minWidth; width <= maxEdgePx; width += gptImage2DimMultiple) {
+  for (let width = minWidth; width <= maxEdgePx; width += dimMultiple) {
     if (width % cols !== 0) continue
 
-    for (let height = minHeight; height <= maxEdgePx; height += gptImage2DimMultiple) {
+    for (let height = minHeight; height <= maxEdgePx; height += dimMultiple) {
       if (height % rows !== 0) continue
-      const valid = imageSizeValidateGptImage2(width, height)
+      const valid = imageSizeValidateDimensions(width, height)
       if (!valid.success) continue
 
       const slotWidthPx = width / cols
@@ -133,19 +133,19 @@ function imageGridMultipleCandidateCreate(
   cropToCellAspect: boolean,
   maxEdgePx: number,
 ): ImageGridMultipleCandidate | undefined {
-  const { gptImage2DimMultiple } = imageSizeConstraints
-  const minWidth = ceilToMultiple(cols * cellWidthPx, gptImage2DimMultiple)
-  const minHeight = ceilToMultiple(rows * cellHeightPx, gptImage2DimMultiple)
+  const { dimMultiple } = imageSizeConstraints
+  const minWidth = ceilToMultiple(cols * cellWidthPx, dimMultiple)
+  const minHeight = ceilToMultiple(rows * cellHeightPx, dimMultiple)
   const cellAspect = cellWidthPx / cellHeightPx
   let best: ImageGridMultipleCandidate | undefined
 
-  for (let width = minWidth; width <= maxEdgePx; width += gptImage2DimMultiple) {
+  for (let width = minWidth; width <= maxEdgePx; width += dimMultiple) {
     if (width % cols !== 0) continue
 
-    for (let height = minHeight; height <= maxEdgePx; height += gptImage2DimMultiple) {
+    for (let height = minHeight; height <= maxEdgePx; height += dimMultiple) {
       if (height % rows !== 0) continue
 
-      const valid = imageSizeValidateGptImage2(width, height)
+      const valid = imageSizeValidateDimensions(width, height)
       if (!valid.success) continue
 
       const slotWidthPx = width / cols
@@ -240,10 +240,7 @@ export function imageGridMultiplePlan(request: ImageGridMultiplePlanRequest): Re
   const op = "imageGridMultiplePlan"
   const { cellWidthPx, cellHeightPx, cellCount } = request
   const cropToCellAspect = request.cropToCellAspect ?? false
-  const maxEdgePx = Math.min(
-    request.maxEdgePx ?? imageSizeConstraints.gptImage2MaxEdge,
-    imageSizeConstraints.gptImage2MaxEdge,
-  )
+  const maxEdgePx = Math.min(request.maxEdgePx ?? imageSizeConstraints.maxEdge, imageSizeConstraints.maxEdge)
   const maxCellsPerGrid = request.maxCellsPerGrid ?? cellCount
 
   if (!(Number.isInteger(cellWidthPx) && cellWidthPx > 0)) {

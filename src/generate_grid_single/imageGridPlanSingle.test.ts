@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { imageModel } from "../shared/imageModel.js"
-import { imageRequestValidate } from "../shared/imageRequestValidate.js"
+import { imageSizeValidate } from "../shared/imageRequestValidate.js"
 import { imageGridConfigSingle } from "./imageGridConfigSingle.js"
 import { imageGridPlanSingle } from "./imageGridPlanSingle.js"
 
@@ -17,13 +16,7 @@ function honored(aspect: number): boolean {
 }
 
 function requestSizeValid(size: string): boolean {
-  return imageRequestValidate({
-    model: imageModel.gptImage2,
-    size,
-    background: "opaque",
-    inputFidelity: undefined,
-    isEdit: false,
-  }).success
+  return imageSizeValidate(size).success
 }
 
 describe("imageGridPlanSingle free mode", () => {

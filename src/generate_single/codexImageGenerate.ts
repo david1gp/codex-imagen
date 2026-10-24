@@ -9,7 +9,7 @@ import { imageModerationDefault, imageModerationSchema } from "../shared/imageMo
 import { imageOutputCompressionDefault, imageOutputCompressionSchema } from "../shared/imageOutputCompression.js"
 import { imageOutputFormatDefault, imageOutputFormatSchema } from "../shared/imageOutputFormat.js"
 import { imageQualityDefault, imageQualitySchema } from "../shared/imageQuality.js"
-import { imageRequestValidate } from "../shared/imageRequestValidate.js"
+import { imageSizeValidate } from "../shared/imageRequestValidate.js"
 import { imageSizeCommon, imageSizeSchema } from "../shared/imageSize.js"
 
 export const codexImageGenerateOptionsSchema = a.object({
@@ -52,14 +52,7 @@ export async function codexImageGenerate(options: CodexImageGenerateOptions): Pr
     writeTxt,
   } = optionsResult.output
 
-  const validateResult = imageRequestValidate({
-    model,
-    size,
-    quality,
-    background,
-    inputFidelity: undefined,
-    isEdit: false,
-  })
+  const validateResult = imageSizeValidate(size)
   if (!validateResult.success) return validateResult
 
   const url = `${codexImagenBaseUrlNormalize(client.baseUrl)}/images/generations`

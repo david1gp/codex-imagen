@@ -5,6 +5,6 @@ export const imageGridConfigSingle = {
   honoredToleranceFraction: 0.04,
   desiredCellShortEdgeDefaultPx: 256,
   maxEdgePx: 3072,
-  edgeMultiplePx: imageSizeConstraints.gptImage2DimMultiple,
+  edgeMultiplePx: imageSizeConstraints.dimMultiple,
   cropPaddingFraction: 0.012,
 } as const
