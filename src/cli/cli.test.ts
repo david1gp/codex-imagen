@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test"
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
+import packageJson from "../../package.json" with { type: "json" }
 
 const cliPath = resolve(import.meta.dir, "..", "cli.ts")
 const pngBytes = Buffer.from("89504e470d0a1a0a", "hex")
+const packageVersion = (packageJson as { version: string }).version
 
 type CliResult = {
   stdout: string
@@ -94,7 +96,7 @@ describe("codex-imagen CLI", () => {
 
       expect(result.exitCode).toBe(0)
       expect(result.stderr).toBe("")
-      expect(result.stdout).toBe("codex-imagen v0.2.0\n")
+      expect(result.stdout).toBe(`codex-imagen v${packageVersion}\n`)
     })
   })
 
@@ -104,7 +106,7 @@ describe("codex-imagen CLI", () => {
 
       expect(result.exitCode).toBe(0)
       expect(result.stderr).toBe("")
-      expect(result.stdout).toContain("codex-imagen v0.2.0\n")
+      expect(result.stdout).toContain(`codex-imagen v${packageVersion}\n`)
       expect(result.stdout).toContain("description: Type-safe codex-lb/OpenAI-compatible image generation helpers")
       expect(result.stdout).toContain("author: unavailable")
       expect(result.stdout).toContain("license: MIT")
