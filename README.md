@@ -83,14 +83,15 @@ Required flags: `--prompt`, `--output-path`.
 
 | Flag | Values | Default |
 | --- | --- | --- |
-| `--model` | `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1`, `gpt-image-1-mini` | `gpt-image-2` |
+| `--model` | `gpt-image-2.5-sunburst`, `gpt-image-2.5-flare`, `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1`, `gpt-image-1-mini` | `gpt-image-2` |
 | `--size` | `auto` or `WxH` | `2048x1152` |
-| `--quality` | `low`, `medium`, `high`, `auto` | `auto` |
-| `--background` | `transparent`, `opaque`, `auto` | `auto` |
+| `--quality` | `low`, `medium`, `high`, `auto` (`xhigh`, `max` also on `gpt-image-2.5-*`) | `auto` |
+| `--background` | `transparent`, `opaque`, `auto` (`transparent` fully supported on `gpt-image-2.5-*`) | `auto` |
 | `--output-format` | `png`, `jpeg`, `webp` | `png` |
 | `--output-compression` | Integer `0`–`100` | `100` |
 | `--moderation` | `auto`, `low` | `auto` |
-| `--user` | String | — |
+| `--user` | String (deprecated, prefer `--safety-identifier`) | — |
+| `--safety-identifier` | Hashed end-user identifier, max 128 chars | — |
 | `--write-txt` | Boolean; use `--write-txt=false` to disable | `true` |
 
 ### `edit`
@@ -106,6 +107,10 @@ bunx codex-imagen edit \
 
 Required flags: `--input-image-path`, `--prompt`, `--output-path`.
 
-Edit-only flags are `--mask-path` (optional path, omitted by default) and `--input-fidelity` (`low` or `high`, omitted by default). Edit also accepts the `generate` flags above, with these defaults: `--size 1536x1024`; all other shared image-option defaults are unchanged.
+Edit-only flags are `--mask-path` (optional path, omitted by default) and `--input-fidelity` (`low` or `high` on `gpt-image-1`/`gpt-image-1.5`, `low` only on `gpt-image-1-mini`, omitted by default and unsupported on `gpt-image-2`/`gpt-image-2.5-*`). Edit also accepts the `generate` flags above, with these defaults: `--size 1536x1024`; all other shared image-option defaults are unchanged.
+
+### Models
+
+`gpt-image-2.5-sunburst` (quality) and `gpt-image-2.5-flare` (speed) are supported for both `generate` and `edit`. They accept the same custom `WxH` sizes as `gpt-image-2` (multiples of 16, aspect ratio at most 3:1, edges at most 3840px, 655,360–8,294,400 total pixels), support `transparent` backgrounds, and add `xhigh`/`max` quality levels. `xhigh`/`max` are rejected for older models. Upstream shut down `gpt-image-1` on 2026-10-23; it remains accepted here for compatible endpoints. The `user` identifier is deprecated upstream in favor of a hashed `safety_identifier` (`--safety-identifier`, also available on library `codexImageGenerate`/`codexImageEdit` options as `safetyIdentifier`).
 
 Successful commands print the output image path to stdout; failures use a nonzero exit status and stderr.
