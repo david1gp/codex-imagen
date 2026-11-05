@@ -5,7 +5,7 @@ Type-safe TypeScript helpers for codex-lb/OpenAI-compatible image generation.
 ## Scope
 
 - Generate single images with caller-provided `baseUrl`, `apiKey`, timeout, and optional `fetch`.
-- Edit existing images with MIME-aware multipart uploads.
+- Edit existing images with MIME-aware multipart uploads, including mask and markup annotation layers.
 - Validate image options at runtime with Valibot before network calls.
 - Plan efficient packed image grids with image size constraints.
 - Slice generated grids into individual cell images with ImageMagick.
@@ -83,13 +83,16 @@ Required flags: `--prompt`, `--output-path`.
 
 | Flag | Values | Default |
 | --- | --- | --- |
-| `--model` | `gpt-image-2.5-sunburst`, `gpt-image-2.5-flare` | `gpt-image-2.5-sunburst` |
+| `--model` | `gpt-image-2.6-sunburst`, `gpt-image-2.6-flare` | `gpt-image-2.6-sunburst` |
 | `--size` | `auto` or `WxH` | `2048x1152` |
 | `--quality` | `low`, `medium`, `high`, `xhigh`, `max`, `auto` | `auto` |
 | `--background` | `transparent`, `opaque`, `auto` | `auto` |
-| `--output-format` | `png`, `jpeg`, `webp` | `png` |
-| `--output-compression` | Integer `0`–`100` | `100` |
+| `--output-format` | `png`, `jpeg`, `webp`, `gif`, `svg` | `png` |
+| `--output-compression` | Integer `0`–`100` (ignored for `gif`/`svg`) | `100` |
 | `--moderation` | `auto`, `low` | `auto` |
+| `--complexity` | `low`, `medium`, `high` | Omitted (model default `high`) |
+| `--frame-count` | Integer `2`–`64` (`gif` output only) | Omitted (API default `9`) |
+| `--frame-duration-ms` | Integer `20`–`2000` (`gif` output only) | Omitted (API default `200`) |
 | `--user` | String (deprecated, prefer `--safety-identifier`) | — |
 | `--safety-identifier` | Hashed end-user identifier, max 128 chars | — |
 | `--write-txt` | Boolean; use `--write-txt=false` to disable | `true` |
@@ -106,10 +109,10 @@ bunx codex-imagen edit \
 
 Required flags: `--input-image-path`, `--prompt`, `--output-path`.
 
-The only edit-only flag is `--mask-path` (optional path, omitted by default). Edit also accepts the `generate` flags above, with these defaults: `--size 1536x1024`; all other shared image-option defaults are unchanged.
+The edit-only flags are `--mask-path` and `--markup-path` (optional paths, omitted by default, mutually exclusive). `--markup-path` sends a transparent PNG annotation layer showing where the change should happen. Edit also accepts the `generate` flags above except `--frame-count`, `--frame-duration-ms`, and `gif`/`svg` output formats, with these defaults: `--size 1536x1024`; all other shared image-option defaults are unchanged.
 
 ### Models
 
-`gpt-image-2.5-sunburst` (quality, the default model) and `gpt-image-2.5-flare` (speed) are the supported models for both `generate` and `edit`. Both accept custom `WxH` sizes (multiples of 16, aspect ratio at most 3:1, edges at most 3840px, 655,360–8,294,400 total pixels), `transparent` backgrounds, and `xhigh`/`max` quality levels. `gpt-image-2` and earlier models were removed. The `user` identifier is deprecated upstream in favor of a hashed `safety_identifier` (`--safety-identifier`, also available on library `codexImageGenerate`/`codexImageEdit` options as `safetyIdentifier`).
+`gpt-image-2.6-sunburst` (quality and edit consistency, the default model) and `gpt-image-2.6-flare` (speed; images in as little as six seconds at `low` quality) are the supported models for both `generate` and `edit`. Both accept custom `WxH` sizes (multiples of 16, aspect ratio at most 3:1, edges at most 3840px, 655,360–8,294,400 total pixels), `transparent` backgrounds, and `xhigh`/`max` quality levels. `gpt-image-2.5` and earlier models were removed. Both support the `complexity` planning control (`low`, `medium`, `high`; omitted means `high`), which is separate from rendering `quality`. `generate` also supports animated GIF output (`--output-format gif` with `--frame-count`/`--frame-duration-ms`) and vector SVG output (`--output-format svg`); the edit endpoint supports neither. The gated SVG authoring-model selection object is not exposed. The `user` identifier is deprecated upstream in favor of a hashed `safety_identifier` (`--safety-identifier`, also available on library `codexImageGenerate`/`codexImageEdit` options as `safetyIdentifier`).
 
 Successful commands print the output image path to stdout; failures use a nonzero exit status and stderr.
