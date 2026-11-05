@@ -11,6 +11,7 @@ import { codexImageEdit } from "./edit/codexImageEdit.js"
 import type { CodexImageGenerateOptions } from "./generate_single/codexImageGenerate.js"
 import { codexImageGenerate } from "./generate_single/codexImageGenerate.js"
 import { imageBackground } from "./shared/imageBackground.js"
+import { imageComplexity } from "./shared/imageComplexity.js"
 import { imageModel } from "./shared/imageModel.js"
 import { imageModeration } from "./shared/imageModeration.js"
 import { imageOutputFormat } from "./shared/imageOutputFormat.js"
@@ -74,6 +75,24 @@ const cliGenerateFlags = {
     optional: true as const,
     brief: "Moderation level",
   },
+  complexity: {
+    kind: "enum" as const,
+    values: Object.values(imageComplexity),
+    optional: true as const,
+    brief: "Image planning complexity",
+  },
+  frameCount: {
+    kind: "parsed" as const,
+    parse: Number,
+    optional: true as const,
+    brief: "GIF frame count from 2 to 64",
+  },
+  frameDurationMs: {
+    kind: "parsed" as const,
+    parse: Number,
+    optional: true as const,
+    brief: "GIF frame duration in milliseconds",
+  },
   user: {
     kind: "parsed" as const,
     parse: String,
@@ -129,6 +148,12 @@ const cliEditFlags = {
     optional: true as const,
     brief: "Optional path to a mask image",
   },
+  markupPath: {
+    kind: "parsed" as const,
+    parse: String,
+    optional: true as const,
+    brief: "Optional path to a markup annotation layer",
+  },
   model: {
     kind: "enum" as const,
     values: Object.values(imageModel),
@@ -170,6 +195,12 @@ const cliEditFlags = {
     values: Object.values(imageModeration),
     optional: true as const,
     brief: "Moderation level",
+  },
+  complexity: {
+    kind: "enum" as const,
+    values: Object.values(imageComplexity),
+    optional: true as const,
+    brief: "Image planning complexity",
   },
   user: {
     kind: "parsed" as const,
