@@ -143,7 +143,7 @@ describe("codex-imagen CLI", () => {
               "--output-path",
               outputPath,
               "--model",
-              "gpt-image-2.5-sunburst",
+              "gpt-image-2.6-sunburst",
               "--size",
               "1024x1024",
               "--quality",
@@ -171,7 +171,7 @@ describe("codex-imagen CLI", () => {
           expect(requestUrl).toBe(`${baseUrl}/images/generations`)
           expect(authorization).toBe("Bearer dotenv-token")
           expect(requestBody).toEqual({
-            model: "gpt-image-2.5-sunburst",
+            model: "gpt-image-2.6-sunburst",
             prompt: "A lighthouse at dawn",
             n: 1,
             size: "1024x1024",
@@ -253,7 +253,7 @@ describe("codex-imagen CLI", () => {
           expect(authorization).toBe("Bearer explicit-token")
           expect(form).toBeDefined()
           if (!form) throw new Error("mock provider did not receive a form")
-          expect(form.get("model")).toBe("gpt-image-2.5-sunburst")
+          expect(form.get("model")).toBe("gpt-image-2.6-sunburst")
           expect(form.get("prompt")).toBe("Remove the clouds")
           expect(form.get("n")).toBe("1")
           expect(form.get("size")).toBe("1536x1024")
@@ -278,6 +278,167 @@ describe("codex-imagen CLI", () => {
           expect(Buffer.from(await mask.arrayBuffer()).equals(maskBytes)).toBe(true)
           expect(existsSync(outputPath)).toBe(true)
           expect(readFileSync(outputPath).equals(pngBytes)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("maps generate complexity and GIF frame flags", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestBody: unknown
+
+      await withMockProvider(
+        async (request) => {
+          requestBody = await request.json()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const outputPath = join(directory, "animation.gif")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "A monkey lifts a glowing lantern",
+              "--output-path",
+              outputPath,
+              "--model",
+              "gpt-image-2.6-flare",
+              "--size",
+              "auto",
+              "--output-format",
+              "gif",
+              "--complexity",
+              "low",
+              "--frame-count",
+              "9",
+              "--frame-duration-ms",
+              "200",
+              "--write-txt=false",
+            ],
+            directory,
+            { CODEX_IMAGE_BASE_URL: baseUrl, CODEX_IMAGE_API_KEY: "test-token" },
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect(requestBody).toEqual({
+            model: "gpt-image-2.6-flare",
+            prompt: "A monkey lifts a glowing lantern",
+            n: 1,
+            size: "auto",
+            quality: "auto",
+            background: "auto",
+            output_format: "gif",
+            moderation: "auto",
+            complexity: "low",
+            frame_count: 9,
+            frame_duration_ms: 200,
+          })
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("maps edit markup and complexity flags", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const inputPath = join(directory, "input.webp")
+      const markupPath = join(directory, "markup.png")
+      const outputPath = join(directory, "edited.png")
+      const inputBytes = Buffer.from("input-image")
+      const markupBytes = Buffer.from("markup-image")
+      writeFileSync(inputPath, inputBytes)
+      writeFileSync(markupPath, markupBytes)
+
+      let form: FormData | undefined
+
+      await withMockProvider(
+        async (request) => {
+          form = await request.formData()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const result = await runCli(
+            [
+              "edit",
+              "--input-image-path",
+              inputPath,
+              "--prompt",
+              "Recolor the circled vase",
+              "--output-path",
+              outputPath,
+              "--markup-path",
+              markupPath,
+              "--model",
+              "gpt-image-2.6-flare",
+              "--complexity",
+              "medium",
+              "--write-txt=false",
+            ],
+            directory,
+            { CODEX_IMAGE_BASE_URL: baseUrl, CODEX_IMAGE_API_KEY: "test-token" },
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect(form).toBeDefined()
+          if (!form) throw new Error("mock provider did not receive a form")
+          expect(form.get("model")).toBe("gpt-image-2.6-flare")
+          expect(form.get("complexity")).toBe("medium")
+          expect(form.get("mask")).toBeNull()
+
+          const markup = form.get("markup")
+          expect(markup).toBeInstanceOf(File)
+          if (!(markup instanceof File)) throw new Error("mock provider did not receive markup")
+          expect(markup.name).toBe("markup.png")
+          expect(markup.type).toBe("image/png")
+          expect(Buffer.from(await markup.arrayBuffer()).equals(markupBytes)).toBe(true)
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("rejects edit requests combining mask and markup paths", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const inputPath = join(directory, "input.png")
+      const maskPath = join(directory, "mask.png")
+      const markupPath = join(directory, "markup.png")
+      writeFileSync(inputPath, Buffer.from("input-image"))
+      writeFileSync(maskPath, Buffer.from("mask-image"))
+      writeFileSync(markupPath, Buffer.from("markup-image"))
+
+      let requestCount = 0
+      await withMockProvider(
+        () => {
+          requestCount += 1
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const result = await runCli(
+            [
+              "edit",
+              "--input-image-path",
+              inputPath,
+              "--prompt",
+              "Conflicting layers",
+              "--output-path",
+              join(directory, "conflict.png"),
+              "--mask-path",
+              maskPath,
+              "--markup-path",
+              markupPath,
+            ],
+            directory,
+            { CODEX_IMAGE_BASE_URL: baseUrl, CODEX_IMAGE_API_KEY: "test-token" },
+          )
+
+          expect(result.exitCode).toBe(1)
+          expect(result.stdout).toBe("")
+          expect(result.stderr).toContain("maskPath and markupPath are mutually exclusive")
+          expect(requestCount).toBe(0)
         },
       )
     })
