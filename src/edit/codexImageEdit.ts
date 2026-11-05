@@ -6,6 +6,7 @@ import { codexImagenBaseUrlNormalize, codexImagenClientSchema } from "../shared/
 import type { CodexImageResult } from "../shared/codexImageResultWrite.js"
 import { codexImageResultWrite } from "../shared/codexImageResultWrite.js"
 import { imageBackgroundDefault, imageBackgroundSchema } from "../shared/imageBackground.js"
+import { imageComplexitySchema } from "../shared/imageComplexity.js"
 import { imageModelDefault, imageModelSchema } from "../shared/imageModel.js"
 import { imageModerationDefault, imageModerationSchema } from "../shared/imageModeration.js"
 import { imageOutputCompressionDefault, imageOutputCompressionSchema } from "../shared/imageOutputCompression.js"
@@ -19,6 +20,7 @@ const imageMimeByExtension: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
   ".webp": "image/webp",
+  ".gif": "image/gif",
 }
 const imageMimeFallback = "image/png"
 
@@ -38,6 +40,7 @@ export const codexImageEditOptionsSchema = a.object({
   prompt: a.pipe(a.string(), a.minLength(1, "prompt is required")),
   outputPath: a.pipe(a.string(), a.minLength(1, "outputPath is required")),
   maskPath: a.optional(readablePathSchema),
+  markupPath: a.optional(readablePathSchema),
   model: a.optional(imageModelSchema, imageModelDefault),
   size: a.optional(imageSizeSchema, imageSizeCommon.landscape),
   quality: a.optional(imageQualitySchema, imageQualityDefault),
@@ -45,6 +48,7 @@ export const codexImageEditOptionsSchema = a.object({
   outputFormat: a.optional(imageOutputFormatSchema, imageOutputFormatDefault),
   outputCompression: a.optional(imageOutputCompressionSchema, imageOutputCompressionDefault),
   moderation: a.optional(imageModerationSchema, imageModerationDefault),
+  complexity: a.optional(imageComplexitySchema),
   user: a.optional(a.string()),
   safetyIdentifier: a.optional(a.pipe(a.string(), a.minLength(1), a.maxLength(128))),
   writeTxt: a.optional(a.boolean(), true),
@@ -64,6 +68,7 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     prompt,
     outputPath,
     maskPath,
+    markupPath,
     model,
     size,
     quality,
@@ -71,6 +76,7 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     outputFormat,
     outputCompression,
     moderation,
+    complexity,
     user,
     safetyIdentifier,
     writeTxt,
@@ -78,6 +84,13 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
 
   const validateResult = imageSizeValidate(size)
   if (!validateResult.success) return validateResult
+
+  if (maskPath !== undefined && markupPath !== undefined) {
+    return createResultError(op, "maskPath and markupPath are mutually exclusive")
+  }
+  if (outputFormat === "gif" || outputFormat === "svg") {
+    return createResultError(op, `outputFormat '${outputFormat}' is not supported for image edits`)
+  }
 
   const form = new FormData()
   try {
@@ -90,6 +103,7 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     form.set("output_format", outputFormat)
     form.set("output_compression", String(outputCompression))
     form.set("moderation", moderation)
+    if (complexity !== undefined) form.set("complexity", complexity)
     if (user !== undefined) form.set("user", user)
     if (safetyIdentifier !== undefined) form.set("safety_identifier", safetyIdentifier)
     form.append(
@@ -106,6 +120,15 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
           type: imageMimeFromPath(maskPath),
         }),
         basename(maskPath),
+      )
+    }
+    if (markupPath !== undefined) {
+      form.append(
+        "markup",
+        new Blob([readFileSync(markupPath)], {
+          type: imageMimeFromPath(markupPath),
+        }),
+        basename(markupPath),
       )
     }
   } catch (error) {

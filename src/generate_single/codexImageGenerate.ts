@@ -4,6 +4,9 @@ import { codexImagenBaseUrlNormalize, codexImagenClientSchema } from "../shared/
 import type { CodexImageResult } from "../shared/codexImageResultWrite.js"
 import { codexImageResultWrite } from "../shared/codexImageResultWrite.js"
 import { imageBackgroundDefault, imageBackgroundSchema } from "../shared/imageBackground.js"
+import { imageComplexitySchema } from "../shared/imageComplexity.js"
+import { imageFrameCountSchema } from "../shared/imageFrameCount.js"
+import { imageFrameDurationMsSchema } from "../shared/imageFrameDurationMs.js"
 import { imageModelDefault, imageModelSchema } from "../shared/imageModel.js"
 import { imageModerationDefault, imageModerationSchema } from "../shared/imageModeration.js"
 import { imageOutputCompressionDefault, imageOutputCompressionSchema } from "../shared/imageOutputCompression.js"
@@ -23,6 +26,9 @@ export const codexImageGenerateOptionsSchema = a.object({
   outputFormat: a.optional(imageOutputFormatSchema, imageOutputFormatDefault),
   outputCompression: a.optional(imageOutputCompressionSchema, imageOutputCompressionDefault),
   moderation: a.optional(imageModerationSchema, imageModerationDefault),
+  complexity: a.optional(imageComplexitySchema),
+  frameCount: a.optional(imageFrameCountSchema),
+  frameDurationMs: a.optional(imageFrameDurationMsSchema),
   user: a.optional(a.string()),
   safetyIdentifier: a.optional(a.pipe(a.string(), a.minLength(1), a.maxLength(128))),
   writeTxt: a.optional(a.boolean(), true),
@@ -47,6 +53,9 @@ export async function codexImageGenerate(options: CodexImageGenerateOptions): Pr
     outputFormat,
     outputCompression,
     moderation,
+    complexity,
+    frameCount,
+    frameDurationMs,
     user,
     safetyIdentifier,
     writeTxt,
@@ -54,6 +63,10 @@ export async function codexImageGenerate(options: CodexImageGenerateOptions): Pr
 
   const validateResult = imageSizeValidate(size)
   if (!validateResult.success) return validateResult
+
+  if ((frameCount !== undefined || frameDurationMs !== undefined) && outputFormat !== "gif") {
+    return createResultError(op, "frameCount and frameDurationMs require outputFormat 'gif'")
+  }
 
   const url = `${codexImagenBaseUrlNormalize(client.baseUrl)}/images/generations`
   const fetchImpl = client.fetch ?? fetch
@@ -77,8 +90,11 @@ export async function codexImageGenerate(options: CodexImageGenerateOptions): Pr
         quality,
         background,
         output_format: outputFormat,
-        output_compression: outputCompression,
+        ...(outputFormat === "gif" || outputFormat === "svg" ? {} : { output_compression: outputCompression }),
         moderation,
+        ...(complexity !== undefined ? { complexity } : {}),
+        ...(frameCount !== undefined ? { frame_count: frameCount } : {}),
+        ...(frameDurationMs !== undefined ? { frame_duration_ms: frameDurationMs } : {}),
         ...(user !== undefined ? { user } : {}),
         ...(safetyIdentifier !== undefined ? { safety_identifier: safetyIdentifier } : {}),
       }),
