@@ -66,7 +66,7 @@ describe("codexImageGenerate", () => {
     expect(readFileSync(outputPath.replace(/\.[^.]*$/, ".txt"), "utf8")).toBe("Small test image\n")
   })
 
-  test("sends gpt-image-2.5 model, xhigh quality, and safety_identifier", async () => {
+  test("sends gpt-image-2.6 model, xhigh quality, and safety_identifier", async () => {
     rmSync(outputDir, { recursive: true, force: true })
     const outputPath = join(outputDir, "sunburst.png")
     const pngHeader = Buffer.from("89504e470d0a1a0a", "hex")
@@ -87,7 +87,7 @@ describe("codexImageGenerate", () => {
       },
       prompt: "sunburst test image",
       outputPath,
-      model: "gpt-image-2.5-sunburst",
+      model: "gpt-image-2.6-sunburst",
       size: "2048x1152",
       quality: "xhigh",
       background: "transparent",
@@ -99,12 +99,72 @@ describe("codexImageGenerate", () => {
     expect(result.success).toBe(true)
     if (!result.success) throw new Error(result.errorMessage)
     expect(calls[0]?.body).toMatchObject({
-      model: "gpt-image-2.5-sunburst",
+      model: "gpt-image-2.6-sunburst",
       size: "2048x1152",
       quality: "xhigh",
       background: "transparent",
       safety_identifier: "hashed-user-123",
     })
     expect(existsSync(outputPath)).toBe(true)
+  })
+
+  test("sends complexity and GIF frame options without output compression", async () => {
+    rmSync(outputDir, { recursive: true, force: true })
+    const outputPath = join(outputDir, "animation.gif")
+    const gifHeader = Buffer.from("474946383961", "hex")
+    const calls: Array<{ body: unknown }> = []
+
+    const result = await codexImageGenerate({
+      client: {
+        baseUrl: "https://codex.example.test/v1/",
+        apiKey: "test-token",
+        requestTimeoutMs: 1_000,
+        fetch: async (_url, init) => {
+          calls.push({ body: JSON.parse(String(init?.body)) })
+          return new Response(JSON.stringify({ created: 1, data: [{ b64_json: gifHeader.toString("base64") }] }), {
+            status: 200,
+            statusText: "OK",
+          })
+        },
+      },
+      prompt: "a monkey lifts a glowing lantern",
+      outputPath,
+      model: "gpt-image-2.6-flare",
+      size: "auto",
+      outputFormat: "gif",
+      complexity: "low",
+      frameCount: 9,
+      frameDurationMs: 200,
+      writeTxt: false,
+    })
+
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error(result.errorMessage)
+    expect(calls[0]?.body).toMatchObject({
+      model: "gpt-image-2.6-flare",
+      output_format: "gif",
+      complexity: "low",
+      frame_count: 9,
+      frame_duration_ms: 200,
+    })
+    expect(calls[0]?.body).not.toHaveProperty("output_compression")
+    expect(existsSync(outputPath)).toBe(true)
+    expect(readFileSync(outputPath).equals(gifHeader)).toBe(true)
+  })
+
+  test("rejects frame options without gif output", async () => {
+    const result = await codexImageGenerate({
+      client: {
+        baseUrl: "https://codex.example.test/v1/",
+        apiKey: "test-token",
+      },
+      prompt: "frame options without gif",
+      outputPath: join(outputDir, "rejected.png"),
+      frameCount: 9,
+    })
+
+    expect(result.success).toBe(false)
+    if (result.success) throw new Error("expected frame validation to fail")
+    expect(result.errorMessage).toContain("frameCount and frameDurationMs require outputFormat 'gif'")
   })
 })
