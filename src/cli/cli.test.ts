@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import packageJson from "../../package.json" with { type: "json" }
@@ -33,6 +33,9 @@ async function runCli(
     }
   }
   childEnvironment.STRICLI_NO_COLOR = "1"
+  if (childEnvironment.XDG_CONFIG_HOME === undefined) {
+    childEnvironment.XDG_CONFIG_HOME = join(cwd, ".test-config")
+  }
 
   const child = Bun.spawn([process.execPath, "run", cliPath, ...args], {
     cwd,
@@ -599,6 +602,559 @@ describe("codex-imagen CLI", () => {
           expect(result.stdout).toBe("")
           expect(result.stderr).toContain("codexImageResultWrite")
           expect(existsSync(outputPath)).toBe(false)
+        },
+      )
+    })
+  })
+
+  test("resolves generate credentials from an explicit config file", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestUrl = ""
+      await withMockProvider(
+        async (request) => {
+          requestUrl = request.url
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKey: "config-token" }))
+          const outputPath = join(directory, "config-only.png")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Config only",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--write-txt=false",
+            ],
+            directory,
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect(requestUrl).toBe(`${baseUrl}/images/generations`)
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("resolves edit credentials from an explicit config file", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const inputPath = join(directory, "input.png")
+      writeFileSync(inputPath, Buffer.from("input-image"))
+      let requestUrl = ""
+      await withMockProvider(
+        async (request) => {
+          requestUrl = request.url
+          await request.formData()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKey: "config-token" }))
+          const outputPath = join(directory, "config-edit.png")
+          const result = await runCli(
+            [
+              "edit",
+              "--input-image-path",
+              inputPath,
+              "--prompt",
+              "Config edit",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--write-txt=false",
+            ],
+            directory,
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect(requestUrl).toBe(`${baseUrl}/images/edits`)
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("resolves the default config file from XDG_CONFIG_HOME", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestCount = 0
+      await withMockProvider(
+        async () => {
+          requestCount += 1
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configHome = join(directory, "xdg-home")
+          mkdirSync(join(configHome, "codex-imagen"), { recursive: true })
+          writeFileSync(
+            join(configHome, "codex-imagen", "codex-imagen.json"),
+            JSON.stringify({ baseUrl, apiKey: "xdg-token" }),
+          )
+          const outputPath = join(directory, "xdg.png")
+          const result = await runCli(
+            ["generate", "--prompt", "XDG default", "--output-path", outputPath, "--write-txt=false"],
+            directory,
+            { XDG_CONFIG_HOME: configHome },
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect(requestCount).toBe(1)
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("resolves the API key from the variable named by config apiKeyEnv", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestCount = 0
+      await withMockProvider(
+        async (request) => {
+          requestCount += 1
+          if (request.headers.get("authorization") !== "Bearer named-token") {
+            return new Response("unauthorized", { status: 401, statusText: "Unauthorized" })
+          }
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKeyEnv: "CUSTOM_IMAGE_TOKEN" }))
+          const outputPath = join(directory, "api-key-env.png")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Named variable",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--write-txt=false",
+            ],
+            directory,
+            { CUSTOM_IMAGE_TOKEN: "named-token" },
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect(requestCount).toBe(1)
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("prefers environment credentials over config file values", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let environmentRequestCount = 0
+      let configRequestCount = 0
+      const environmentServer = Bun.serve({
+        port: 0,
+        fetch: () => {
+          environmentRequestCount += 1
+          return imageResponse()
+        },
+      })
+      const configServer = Bun.serve({
+        port: 0,
+        fetch: () => {
+          configRequestCount += 1
+          return imageResponse()
+        },
+      })
+
+      try {
+        const configPath = join(directory, "codex-imagen.json")
+        writeFileSync(configPath, JSON.stringify({ baseUrl: configServer.url.origin, apiKey: "config-token" }))
+        const outputPath = join(directory, "env-wins.png")
+        const result = await runCli(
+          [
+            "generate",
+            "--prompt",
+            "Environment wins over config",
+            "--output-path",
+            outputPath,
+            "--config-path",
+            configPath,
+            "--write-txt=false",
+          ],
+          directory,
+          {
+            CODEX_IMAGE_BASE_URL: environmentServer.url.origin,
+            CODEX_IMAGE_API_KEY: "environment-token",
+          },
+        )
+
+        expect(result.exitCode).toBe(0)
+        expect(result.stdout).toBe(`${outputPath}\n`)
+        expect(environmentRequestCount).toBe(1)
+        expect(configRequestCount).toBe(0)
+        expect(existsSync(outputPath)).toBe(true)
+      } finally {
+        await Promise.all([environmentServer.stop(true), configServer.stop(true)])
+      }
+    })
+  })
+
+  test("prefers CODEX_IMAGE_API_KEY over a failing config apiKeyEnv source", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestCount = 0
+      await withMockProvider(
+        async () => {
+          requestCount += 1
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKeyEnv: "DEFINITELY_MISSING_VARIABLE" }))
+          const outputPath = join(directory, "direct-env-wins.png")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Direct env wins",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--write-txt=false",
+            ],
+            directory,
+            { CODEX_IMAGE_API_KEY: "environment-token" },
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(requestCount).toBe(1)
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("prefers --base-url over the environment base URL", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let flagRequestCount = 0
+      let environmentRequestCount = 0
+      const flagServer = Bun.serve({
+        port: 0,
+        fetch: () => {
+          flagRequestCount += 1
+          return imageResponse()
+        },
+      })
+      const environmentServer = Bun.serve({
+        port: 0,
+        fetch: () => {
+          environmentRequestCount += 1
+          return imageResponse()
+        },
+      })
+
+      try {
+        const outputPath = join(directory, "flag-wins.png")
+        const result = await runCli(
+          [
+            "generate",
+            "--prompt",
+            "Flag wins",
+            "--output-path",
+            outputPath,
+            "--base-url",
+            flagServer.url.origin,
+            "--write-txt=false",
+          ],
+          directory,
+          {
+            CODEX_IMAGE_BASE_URL: environmentServer.url.origin,
+            CODEX_IMAGE_API_KEY: "environment-token",
+          },
+        )
+
+        expect(result.exitCode).toBe(0)
+        expect(result.stdout).toBe(`${outputPath}\n`)
+        expect(flagRequestCount).toBe(1)
+        expect(environmentRequestCount).toBe(0)
+        expect(existsSync(outputPath)).toBe(true)
+      } finally {
+        await Promise.all([flagServer.stop(true), environmentServer.stop(true)])
+      }
+    })
+  })
+
+  test("resolves the API key from the variable named by --api-key-env", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestCount = 0
+      await withMockProvider(
+        async () => {
+          requestCount += 1
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ apiKeyEnv: "DEFINITELY_MISSING_VARIABLE" }))
+          const outputPath = join(directory, "flag-api-key-env.png")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Flag names the variable",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--api-key-env",
+              "FLAG_NAMED_TOKEN",
+              "--write-txt=false",
+            ],
+            directory,
+            { CODEX_IMAGE_BASE_URL: baseUrl, FLAG_NAMED_TOKEN: "flag-named-token" },
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(requestCount).toBe(1)
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("fails when the variable named by --api-key-env is missing", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestCount = 0
+      await withMockProvider(
+        async () => {
+          requestCount += 1
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Missing named variable",
+              "--output-path",
+              join(directory, "missing-named.png"),
+              "--api-key-env",
+              "DEFINITELY_MISSING_VARIABLE",
+              "--write-txt=false",
+            ],
+            directory,
+            { CODEX_IMAGE_BASE_URL: baseUrl },
+          )
+
+          expect(result.exitCode).toBe(1)
+          expect(result.stdout).toBe("")
+          expect(result.stderr).toContain("DEFINITELY_MISSING_VARIABLE")
+          expect(requestCount).toBe(0)
+        },
+      )
+    })
+  })
+
+  test("fails closed when the config apiKeyEnv variable is missing despite config apiKey", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestCount = 0
+      await withMockProvider(
+        async () => {
+          requestCount += 1
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(
+            configPath,
+            JSON.stringify({ baseUrl, apiKeyEnv: "DEFINITELY_MISSING_VARIABLE", apiKey: "fallback-token" }),
+          )
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Fail closed",
+              "--output-path",
+              join(directory, "fail-closed.png"),
+              "--config-path",
+              configPath,
+              "--write-txt=false",
+            ],
+            directory,
+          )
+
+          expect(result.exitCode).toBe(1)
+          expect(result.stdout).toBe("")
+          expect(result.stderr).toContain("DEFINITELY_MISSING_VARIABLE")
+          expect(requestCount).toBe(0)
+        },
+      )
+    })
+  })
+
+  test("fails with an explicit missing config file", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const missingConfigPath = join(directory, "does-not-exist.json")
+      const result = await runCli(
+        [
+          "generate",
+          "--config-path",
+          missingConfigPath,
+          "--prompt",
+          "Missing config",
+          "--output-path",
+          join(directory, "missing-config.png"),
+        ],
+        directory,
+        {
+          CODEX_IMAGE_BASE_URL: "http://127.0.0.1:1",
+          CODEX_IMAGE_API_KEY: "test-token",
+        },
+      )
+
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toBe("")
+      expect(result.stderr).toContain("cliConfigLoad")
+      expect(result.stderr).toContain(missingConfigPath)
+    })
+  })
+
+  test("fails with an invalid JSON config file", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const configPath = join(directory, "codex-imagen.json")
+      writeFileSync(configPath, "{not valid json")
+      const result = await runCli(
+        [
+          "generate",
+          "--config-path",
+          configPath,
+          "--prompt",
+          "Invalid JSON",
+          "--output-path",
+          join(directory, "invalid-json.png"),
+        ],
+        directory,
+        {
+          CODEX_IMAGE_BASE_URL: "http://127.0.0.1:1",
+          CODEX_IMAGE_API_KEY: "test-token",
+        },
+      )
+
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toBe("")
+      expect(result.stderr).toContain("cliConfigLoad")
+      expect(result.stderr).toContain(configPath)
+    })
+  })
+
+  test("fails with a schema-invalid config file", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const configPath = join(directory, "codex-imagen.json")
+      writeFileSync(configPath, JSON.stringify({ baseUrl: "", requestTimeoutMs: 0 }))
+      const result = await runCli(
+        [
+          "generate",
+          "--config-path",
+          configPath,
+          "--prompt",
+          "Schema invalid",
+          "--output-path",
+          join(directory, "schema-invalid.png"),
+        ],
+        directory,
+        {
+          CODEX_IMAGE_BASE_URL: "http://127.0.0.1:1",
+          CODEX_IMAGE_API_KEY: "test-token",
+        },
+      )
+
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toBe("")
+      expect(result.stderr).toContain("cliConfigLoad")
+      expect(result.stderr).toContain(configPath)
+    })
+  })
+
+  test("applies config requestTimeoutMs when --request-timeout-ms is absent", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const server = Bun.serve({
+        port: 0,
+        fetch: async () => {
+          await Bun.sleep(5000)
+          return imageResponse()
+        },
+      })
+      try {
+        const configPath = join(directory, "codex-imagen.json")
+        writeFileSync(
+          configPath,
+          JSON.stringify({ baseUrl: server.url.origin, apiKey: "config-token", requestTimeoutMs: 50 }),
+        )
+        const result = await runCli(
+          [
+            "generate",
+            "--prompt",
+            "Config timeout",
+            "--output-path",
+            join(directory, "config-timeout.png"),
+            "--config-path",
+            configPath,
+            "--write-txt=false",
+          ],
+          directory,
+        )
+
+        expect(result.exitCode).toBe(1)
+        expect(result.stdout).toBe("")
+        expect(result.stderr).toContain("timed out")
+      } finally {
+        await server.stop(true)
+      }
+    })
+  })
+
+  test("prefers --request-timeout-ms over config requestTimeoutMs", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestCount = 0
+      await withMockProvider(
+        async () => {
+          requestCount += 1
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKey: "config-token", requestTimeoutMs: 1 }))
+          const outputPath = join(directory, "flag-timeout.png")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Flag timeout wins",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--request-timeout-ms",
+              "30000",
+              "--write-txt=false",
+            ],
+            directory,
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect(requestCount).toBe(1)
+          expect(existsSync(outputPath)).toBe(true)
         },
       )
     })

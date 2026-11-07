@@ -5,6 +5,9 @@ import type { CliCommonFlags } from "./cliCommonFlags.js"
 const cliCommonOptionsSchema = a.object({
   dotenvPath: a.optional(a.pipe(a.string(), a.minLength(1, "dotenvPath must not be empty"))),
   requestTimeoutMs: a.optional(a.pipe(a.number(), a.integer(), a.minValue(1, "requestTimeoutMs must be at least 1"))),
+  configPath: a.optional(a.pipe(a.string(), a.minLength(1, "configPath must not be empty"))),
+  baseUrl: a.optional(a.pipe(a.string(), a.minLength(1, "baseUrl must not be empty"))),
+  apiKeyEnv: a.optional(a.pipe(a.string(), a.minLength(1, "apiKeyEnv must not be empty"))),
 })
 
 type CliCommonOptions = a.InferOutput<typeof cliCommonOptionsSchema>
