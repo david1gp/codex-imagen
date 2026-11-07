@@ -1159,4 +1159,333 @@ describe("codex-imagen CLI", () => {
       )
     })
   })
+
+  test("applies config model to generate requests when --model is absent", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestBody: unknown
+      await withMockProvider(
+        async (request) => {
+          requestBody = await request.json()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKey: "config-token", model: "gpt-image-2.6-flare" }))
+          const outputPath = join(directory, "config-model.png")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Config model",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--write-txt=false",
+            ],
+            directory,
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect((requestBody as { model: string }).model).toBe("gpt-image-2.6-flare")
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("applies config model to edit requests when --model is absent", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const inputPath = join(directory, "input.png")
+      writeFileSync(inputPath, Buffer.from("input-image"))
+
+      let form: FormData | undefined
+      await withMockProvider(
+        async (request) => {
+          form = await request.formData()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKey: "config-token", model: "gpt-image-2.6-flare" }))
+          const outputPath = join(directory, "config-model-edit.png")
+          const result = await runCli(
+            [
+              "edit",
+              "--input-image-path",
+              inputPath,
+              "--prompt",
+              "Config model edit",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--write-txt=false",
+            ],
+            directory,
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect(form).toBeDefined()
+          if (!form) throw new Error("mock provider did not receive a form")
+          expect(form.get("model")).toBe("gpt-image-2.6-flare")
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("prefers --model over config model", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestBody: unknown
+      await withMockProvider(
+        async (request) => {
+          requestBody = await request.json()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKey: "config-token", model: "gpt-image-2.6-flare" }))
+          const outputPath = join(directory, "flag-model.png")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Flag model wins",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--model",
+              "gpt-image-2.6-sunburst",
+              "--write-txt=false",
+            ],
+            directory,
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect((requestBody as { model: string }).model).toBe("gpt-image-2.6-sunburst")
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("fails with a schema-invalid config model naming the config path", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const configPath = join(directory, "codex-imagen.json")
+      writeFileSync(configPath, JSON.stringify({ model: "gpt-image-1.5" }))
+      const result = await runCli(
+        [
+          "generate",
+          "--config-path",
+          configPath,
+          "--prompt",
+          "Invalid config model",
+          "--output-path",
+          join(directory, "invalid-model.png"),
+        ],
+        directory,
+        {
+          CODEX_IMAGE_BASE_URL: "http://127.0.0.1:1",
+          CODEX_IMAGE_API_KEY: "test-token",
+        },
+      )
+
+      expect(result.exitCode).toBe(1)
+      expect(result.stdout).toBe("")
+      expect(result.stderr).toContain("cliConfigLoad")
+      expect(result.stderr).toContain(configPath)
+    })
+  })
+
+  test("sends gpt-image-2 for generate and edit when selected", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const inputPath = join(directory, "input.png")
+      writeFileSync(inputPath, Buffer.from("input-image"))
+      let generateBody: unknown
+      const generateResult = await withMockProvider(
+        async (request) => {
+          generateBody = await request.json()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const outputPath = join(directory, "gpt-image-2.png")
+          return runCli(
+            [
+              "generate",
+              "--prompt",
+              "Gpt image 2",
+              "--output-path",
+              outputPath,
+              "--model",
+              "gpt-image-2",
+              "--write-txt=false",
+            ],
+            directory,
+            { CODEX_IMAGE_BASE_URL: baseUrl, CODEX_IMAGE_API_KEY: "test-token" },
+          )
+        },
+      )
+
+      expect(generateResult.exitCode).toBe(0)
+      expect(generateResult.stderr).toBe("")
+      expect((generateBody as { model: string }).model).toBe("gpt-image-2")
+
+      let editForm: FormData | undefined
+      const editResult = await withMockProvider(
+        async (request) => {
+          editForm = await request.formData()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const outputPath = join(directory, "gpt-image-2-edit.png")
+          return runCli(
+            [
+              "edit",
+              "--input-image-path",
+              inputPath,
+              "--prompt",
+              "Gpt image 2 edit",
+              "--output-path",
+              outputPath,
+              "--model",
+              "gpt-image-2",
+              "--write-txt=false",
+            ],
+            directory,
+            { CODEX_IMAGE_BASE_URL: baseUrl, CODEX_IMAGE_API_KEY: "test-token" },
+          )
+        },
+      )
+
+      expect(editResult.exitCode).toBe(0)
+      expect(editResult.stderr).toBe("")
+      expect(editForm).toBeDefined()
+      if (!editForm) throw new Error("mock provider did not receive a form")
+      expect(editForm.get("model")).toBe("gpt-image-2")
+    })
+  })
+
+  test("rejects gpt-image-2-only options before any request for generate and edit", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      const inputPath = join(directory, "input.png")
+      writeFileSync(inputPath, Buffer.from("input-image"))
+      let requestCount = 0
+      await withMockProvider(
+        async () => {
+          requestCount += 1
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const environment = { CODEX_IMAGE_BASE_URL: baseUrl, CODEX_IMAGE_API_KEY: "test-token" }
+          const generateResult = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Gated quality",
+              "--output-path",
+              join(directory, "gated.png"),
+              "--model",
+              "gpt-image-2",
+              "--quality",
+              "xhigh",
+            ],
+            directory,
+            environment,
+          )
+          expect(generateResult.exitCode).toBe(1)
+          expect(generateResult.stderr).toContain("quality 'xhigh' is not supported")
+
+          const editResult = await runCli(
+            [
+              "edit",
+              "--input-image-path",
+              inputPath,
+              "--prompt",
+              "Gated background",
+              "--output-path",
+              join(directory, "gated-edit.png"),
+              "--model",
+              "gpt-image-2",
+              "--background",
+              "transparent",
+            ],
+            directory,
+            environment,
+          )
+          expect(editResult.exitCode).toBe(1)
+          expect(editResult.stderr).toContain("background 'transparent' is not supported")
+        },
+      )
+      expect(requestCount).toBe(0)
+    })
+  })
+
+  test("applies config model gpt-image-2 to generate requests", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestBody: unknown
+      await withMockProvider(
+        async (request) => {
+          requestBody = await request.json()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const configPath = join(directory, "codex-imagen.json")
+          writeFileSync(configPath, JSON.stringify({ baseUrl, apiKey: "config-token", model: "gpt-image-2" }))
+          const outputPath = join(directory, "config-gpt-image-2.png")
+          const result = await runCli(
+            [
+              "generate",
+              "--prompt",
+              "Config gpt-image-2",
+              "--output-path",
+              outputPath,
+              "--config-path",
+              configPath,
+              "--write-txt=false",
+            ],
+            directory,
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect((requestBody as { model: string }).model).toBe("gpt-image-2")
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
+
+  test("keeps the sunburst default when no model is configured", async () => {
+    await withTemporaryDirectory(async (directory) => {
+      let requestBody: unknown
+      await withMockProvider(
+        async (request) => {
+          requestBody = await request.json()
+          return imageResponse()
+        },
+        async (baseUrl) => {
+          const outputPath = join(directory, "default-model.png")
+          const result = await runCli(
+            ["generate", "--prompt", "Default model", "--output-path", outputPath, "--write-txt=false"],
+            directory,
+            { CODEX_IMAGE_BASE_URL: baseUrl, CODEX_IMAGE_API_KEY: "test-token" },
+          )
+
+          expect(result.exitCode).toBe(0)
+          expect(result.stderr).toBe("")
+          expect(result.stdout).toBe(`${outputPath}\n`)
+          expect((requestBody as { model: string }).model).toBe("gpt-image-2.6-sunburst")
+          expect(existsSync(outputPath)).toBe(true)
+        },
+      )
+    })
+  })
 })

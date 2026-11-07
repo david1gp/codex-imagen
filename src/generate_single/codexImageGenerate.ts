@@ -7,6 +7,7 @@ import { imageBackgroundDefault, imageBackgroundSchema } from "../shared/imageBa
 import { imageComplexitySchema } from "../shared/imageComplexity.js"
 import { imageFrameCountSchema } from "../shared/imageFrameCount.js"
 import { imageFrameDurationMsSchema } from "../shared/imageFrameDurationMs.js"
+import { imageGptImage2Validate } from "../shared/imageGptImage2Validate.js"
 import { imageModelDefault, imageModelSchema } from "../shared/imageModel.js"
 import { imageModerationDefault, imageModerationSchema } from "../shared/imageModeration.js"
 import { imageOutputCompressionDefault, imageOutputCompressionSchema } from "../shared/imageOutputCompression.js"
@@ -60,6 +61,17 @@ export async function codexImageGenerate(options: CodexImageGenerateOptions): Pr
     safetyIdentifier,
     writeTxt,
   } = optionsResult.output
+
+  const gptImage2Result = imageGptImage2Validate(model, {
+    quality,
+    outputFormat,
+    background,
+    complexity,
+    frameCount,
+    frameDurationMs,
+    safetyIdentifier,
+  })
+  if (!gptImage2Result.success) return gptImage2Result
 
   const validateResult = imageSizeValidate(size)
   if (!validateResult.success) return validateResult

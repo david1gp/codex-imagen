@@ -167,4 +167,90 @@ describe("codexImageGenerate", () => {
     if (result.success) throw new Error("expected frame validation to fail")
     expect(result.errorMessage).toContain("frameCount and frameDurationMs require outputFormat 'gif'")
   })
+
+  test("sends gpt-image-2 with default options", async () => {
+    rmSync(outputDir, { recursive: true, force: true })
+    const outputPath = join(outputDir, "gpt-image-2.png")
+    const pngHeader = Buffer.from("89504e470d0a1a0a", "hex")
+    const calls: Array<{ body: unknown }> = []
+
+    const result = await codexImageGenerate({
+      client: {
+        baseUrl: "https://codex.example.test/v1/",
+        apiKey: "test-token",
+        requestTimeoutMs: 1_000,
+        fetch: async (_url, init) => {
+          calls.push({ body: JSON.parse(String(init?.body)) })
+          return new Response(JSON.stringify({ created: 1, data: [{ b64_json: pngHeader.toString("base64") }] }), {
+            status: 200,
+            statusText: "OK",
+          })
+        },
+      },
+      prompt: "gpt-image-2 default test image",
+      outputPath,
+      model: "gpt-image-2",
+      writeTxt: false,
+    })
+
+    expect(result.success).toBe(true)
+    if (!result.success) throw new Error(result.errorMessage)
+    expect(calls[0]?.body).toMatchObject({
+      model: "gpt-image-2",
+      size: "2048x1152",
+      quality: "auto",
+      background: "auto",
+      output_format: "png",
+    })
+    expect(existsSync(outputPath)).toBe(true)
+  })
+
+  test("rejects gpt-image-2 options codex-lb cannot serve without issuing fetch", async () => {
+    const cases: Array<{ name: string; options: Record<string, unknown>; message: string }> = [
+      { name: "xhigh quality", options: { quality: "xhigh" }, message: "quality 'xhigh' is not supported" },
+      { name: "max quality", options: { quality: "max" }, message: "quality 'max' is not supported" },
+      { name: "gif output", options: { outputFormat: "gif" }, message: "outputFormat 'gif' is not supported" },
+      { name: "svg output", options: { outputFormat: "svg" }, message: "outputFormat 'svg' is not supported" },
+      {
+        name: "transparent background",
+        options: { background: "transparent" },
+        message: "background 'transparent' is not supported",
+      },
+      { name: "complexity", options: { complexity: "low" }, message: "complexity is not supported" },
+      { name: "frameCount", options: { frameCount: 9 }, message: "frameCount and frameDurationMs are not supported" },
+      {
+        name: "frameDurationMs",
+        options: { frameDurationMs: 200 },
+        message: "frameCount and frameDurationMs are not supported",
+      },
+      {
+        name: "safetyIdentifier",
+        options: { safetyIdentifier: "hashed-user-123" },
+        message: "safetyIdentifier is not supported",
+      },
+    ]
+    for (const { name, options, message } of cases) {
+      let fetchCalls = 0
+      const result = await codexImageGenerate({
+        client: {
+          baseUrl: "https://codex.example.test/v1/",
+          apiKey: "test-token",
+          requestTimeoutMs: 1_000,
+          fetch: async () => {
+            fetchCalls += 1
+            return new Response("{}", { status: 200, statusText: "OK" })
+          },
+        },
+        prompt: `gpt-image-2 gate: ${name}`,
+        outputPath: join(outputDir, "gated.png"),
+        model: "gpt-image-2",
+        ...options,
+      } as Parameters<typeof codexImageGenerate>[0])
+
+      expect(result.success).toBe(false)
+      if (result.success) throw new Error(`expected gpt-image-2 gate to fail for ${name}`)
+      expect(result.errorMessage).toContain(message)
+      expect(fetchCalls).toBe(0)
+    }
+  })
 })
