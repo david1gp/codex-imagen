@@ -70,7 +70,8 @@ It also reads an optional JSON config file, by default `$XDG_CONFIG_HOME/codex-i
   "baseUrl": "https://your-image-endpoint.example",
   "apiKey": "your-api-key",
   "apiKeyEnv": "NAME_OF_ENV_VAR_HOLDING_THE_API_KEY",
-  "requestTimeoutMs": 300000
+  "requestTimeoutMs": 300000,
+  "model": "gpt-image-2.6-flare"
 }
 ```
 
@@ -79,6 +80,7 @@ Resolution precedence per field:
 - `baseUrl`: `--base-url` > `CODEX_IMAGE_BASE_URL` > `config.baseUrl`
 - API key: `CODEX_IMAGE_API_KEY` > the variable named by `--api-key-env` (else `config.apiKeyEnv`) > `config.apiKey`
 - `requestTimeoutMs`: `--request-timeout-ms` > `config.requestTimeoutMs` > `300000`
+- `model`: `--model` > `config.model` > `gpt-image-2.6-sunburst`
 
 The environment layer is process env after dotenv loading (process env wins over dotenv values). A selected `--api-key-env`/`config.apiKeyEnv` variable that is unset or empty is a hard error naming the variable; there is no silent fallthrough to `config.apiKey`. There is deliberately no `--api-key` flag, so secrets never enter shell history or `ps` output.
 
@@ -105,7 +107,7 @@ Required flags: `--prompt`, `--output-path`.
 
 | Flag | Values | Default |
 | --- | --- | --- |
-| `--model` | `gpt-image-2.6-sunburst`, `gpt-image-2.6-flare` | `gpt-image-2.6-sunburst` |
+| `--model` | `gpt-image-2`, `gpt-image-2.6-sunburst`, `gpt-image-2.6-flare` | Config `model`, else `gpt-image-2.6-sunburst` |
 | `--size` | `auto` or `WxH` | `2048x1152` |
 | `--quality` | `low`, `medium`, `high`, `xhigh`, `max`, `auto` | `auto` |
 | `--background` | `transparent`, `opaque`, `auto` | `auto` |
@@ -135,6 +137,6 @@ The edit-only flags are `--mask-path` and `--markup-path` (optional paths, omitt
 
 ### Models
 
-`gpt-image-2.6-sunburst` (quality and edit consistency, the default model) and `gpt-image-2.6-flare` (speed; images in as little as six seconds at `low` quality) are the supported models for both `generate` and `edit`. Both accept custom `WxH` sizes (multiples of 16, aspect ratio at most 3:1, edges at most 3840px, 655,360–8,294,400 total pixels), `transparent` backgrounds, and `xhigh`/`max` quality levels. `gpt-image-2.5` and earlier models were removed. Both support the `complexity` planning control (`low`, `medium`, `high`; omitted means `high`), which is separate from rendering `quality`. `generate` also supports animated GIF output (`--output-format gif` with `--frame-count`/`--frame-duration-ms`) and vector SVG output (`--output-format svg`); the edit endpoint supports neither. The gated SVG authoring-model selection object is not exposed. The `user` identifier is deprecated upstream in favor of a hashed `safety_identifier` (`--safety-identifier`, also available on library `codexImageGenerate`/`codexImageEdit` options as `safetyIdentifier`).
+`gpt-image-2.6-sunburst` (quality and edit consistency, the default model) and `gpt-image-2.6-flare` (speed; images in as little as six seconds at `low` quality) are the supported models for both `generate` and `edit`. `gpt-image-2` is also accepted, with the codex-lb `gpt-image-2` parameter matrix enforced client-side before any request: `quality` is limited to `low`, `medium`, `high`, `auto`; `output-format` to `png`, `jpeg`, `webp`; `transparent` backgrounds, `complexity`, GIF frame fields, and `safety-identifier` are rejected (codex-lb would 400 or silently drop them). Both accept custom `WxH` sizes (multiples of 16, aspect ratio at most 3:1, edges at most 3840px, 655,360–8,294,400 total pixels), `transparent` backgrounds, and `xhigh`/`max` quality levels. `gpt-image-2.5` and earlier models were removed. Both support the `complexity` planning control (`low`, `medium`, `high`; omitted means `high`), which is separate from rendering `quality`. `generate` also supports animated GIF output (`--output-format gif` with `--frame-count`/`--frame-duration-ms`) and vector SVG output (`--output-format svg`); the edit endpoint supports neither. The gated SVG authoring-model selection object is not exposed. The `user` identifier is deprecated upstream in favor of a hashed `safety_identifier` (`--safety-identifier`, also available on library `codexImageGenerate`/`codexImageEdit` options as `safetyIdentifier`).
 
 Successful commands print the output image path to stdout; failures use a nonzero exit status and stderr.

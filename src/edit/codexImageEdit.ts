@@ -7,6 +7,7 @@ import type { CodexImageResult } from "../shared/codexImageResultWrite.js"
 import { codexImageResultWrite } from "../shared/codexImageResultWrite.js"
 import { imageBackgroundDefault, imageBackgroundSchema } from "../shared/imageBackground.js"
 import { imageComplexitySchema } from "../shared/imageComplexity.js"
+import { imageGptImage2Validate } from "../shared/imageGptImage2Validate.js"
 import { imageModelDefault, imageModelSchema } from "../shared/imageModel.js"
 import { imageModerationDefault, imageModerationSchema } from "../shared/imageModeration.js"
 import { imageOutputCompressionDefault, imageOutputCompressionSchema } from "../shared/imageOutputCompression.js"
@@ -81,6 +82,15 @@ export async function codexImageEdit(options: CodexImageEditOptions): Promise<Re
     safetyIdentifier,
     writeTxt,
   } = optionsResult.output
+
+  const gptImage2Result = imageGptImage2Validate(model, {
+    quality,
+    outputFormat,
+    background,
+    complexity,
+    safetyIdentifier,
+  })
+  if (!gptImage2Result.success) return gptImage2Result
 
   const validateResult = imageSizeValidate(size)
   if (!validateResult.success) return validateResult

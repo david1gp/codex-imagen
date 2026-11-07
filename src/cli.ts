@@ -3,6 +3,7 @@
 import { buildApplication, buildCommand, buildRouteMap, type CommandContext, help, run } from "@stricli/core"
 import { type CliCommonFlags, cliCommonFlags } from "./cli/cliCommonFlags.js"
 import { cliImageClientFromFlags } from "./cli/cliImageClientFromFlags.js"
+import { cliModelFromFlags } from "./cli/cliModelFromFlags.js"
 import { cliImageResultPresent } from "./cli/cliImageResultPresent.js"
 import { cliResultError } from "./cli/cliResultError.js"
 import { cliVersionPresent } from "./cli/cliVersionPresent.js"
@@ -117,6 +118,9 @@ const generateCommand = buildCommand({
     const clientResult = cliImageClientFromFlags(flags)
     if (!clientResult.success) return cliResultError(clientResult)
 
+    const modelResult = cliModelFromFlags(flags)
+    if (!modelResult.success) return cliResultError(modelResult)
+
     const {
       dotenvPath: _dotenvPath,
       requestTimeoutMs: _requestTimeoutMs,
@@ -125,7 +129,11 @@ const generateCommand = buildCommand({
       apiKeyEnv: _apiKeyEnv,
       ...generationFlags
     } = flags
-    const result = await codexImageGenerate({ client: clientResult.data, ...generationFlags })
+    const result = await codexImageGenerate({
+      client: clientResult.data,
+      ...generationFlags,
+      ...(modelResult.data === undefined ? {} : { model: modelResult.data }),
+    })
     return cliImageResultPresent(result, this.process)
   },
   parameters: { flags: cliGenerateFlags },
@@ -233,6 +241,9 @@ const editCommand = buildCommand({
     const clientResult = cliImageClientFromFlags(flags)
     if (!clientResult.success) return cliResultError(clientResult)
 
+    const modelResult = cliModelFromFlags(flags)
+    if (!modelResult.success) return cliResultError(modelResult)
+
     const {
       dotenvPath: _dotenvPath,
       requestTimeoutMs: _requestTimeoutMs,
@@ -241,7 +252,11 @@ const editCommand = buildCommand({
       apiKeyEnv: _apiKeyEnv,
       ...editFlags
     } = flags
-    const result = await codexImageEdit({ client: clientResult.data, ...editFlags })
+    const result = await codexImageEdit({
+      client: clientResult.data,
+      ...editFlags,
+      ...(modelResult.data === undefined ? {} : { model: modelResult.data }),
+    })
     return cliImageResultPresent(result, this.process)
   },
   parameters: { flags: cliEditFlags },
