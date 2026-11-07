@@ -63,12 +63,34 @@ CODEX_IMAGE_API_KEY=your-api-key
 
 By default it loads `.env` from the current working directory. A missing default `.env` is allowed, and existing environment variables take precedence over values loaded from it. Use `--dotenv-path PATH` to require a specific dotenv file.
 
+It also reads an optional JSON config file, by default `$XDG_CONFIG_HOME/codex-imagen/codex-imagen.json` (fallback `~/.config/codex-imagen/codex-imagen.json`). A missing default config file is allowed. Use `--config-path PATH` to require a specific config file; a missing, unreadable, invalid-JSON, or schema-invalid explicit file is a hard error naming the path. All config keys are optional:
+
+```json
+{
+  "baseUrl": "https://your-image-endpoint.example",
+  "apiKey": "your-api-key",
+  "apiKeyEnv": "NAME_OF_ENV_VAR_HOLDING_THE_API_KEY",
+  "requestTimeoutMs": 300000
+}
+```
+
+Resolution precedence per field:
+
+- `baseUrl`: `--base-url` > `CODEX_IMAGE_BASE_URL` > `config.baseUrl`
+- API key: `CODEX_IMAGE_API_KEY` > the variable named by `--api-key-env` (else `config.apiKeyEnv`) > `config.apiKey`
+- `requestTimeoutMs`: `--request-timeout-ms` > `config.requestTimeoutMs` > `300000`
+
+The environment layer is process env after dotenv loading (process env wins over dotenv values). A selected `--api-key-env`/`config.apiKeyEnv` variable that is unset or empty is a hard error naming the variable; there is no silent fallthrough to `config.apiKey`. There is deliberately no `--api-key` flag, so secrets never enter shell history or `ps` output.
+
 Common flags:
 
 | Flag | Values | Default |
 | --- | --- | --- |
 | `--dotenv-path` | Dotenv file path | `.env` in the current working directory; missing file allowed |
-| `--request-timeout-ms` | Positive integer milliseconds | `300000` |
+| `--config-path` | JSON config file path | `$XDG_CONFIG_HOME/codex-imagen/codex-imagen.json` (fallback `~/.config/...`); missing file allowed |
+| `--base-url` | Image API base URL | `CODEX_IMAGE_BASE_URL`, else config `baseUrl` |
+| `--api-key-env` | Name of the environment variable holding the API key | `CODEX_IMAGE_API_KEY`, else config `apiKeyEnv`/`apiKey` |
+| `--request-timeout-ms` | Positive integer milliseconds | Config `requestTimeoutMs`, else `300000` |
 | `--help` | — | — |
 
 ### `generate`

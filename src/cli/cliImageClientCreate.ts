@@ -13,12 +13,18 @@ export function cliImageClientCreate(
   const op = "cliImageClientCreate"
   const baseUrl = environment.CODEX_IMAGE_BASE_URL
   if (baseUrl === undefined || baseUrl.trim().length === 0) {
-    return createResultError(op, "CODEX_IMAGE_BASE_URL is required")
+    return createResultError(
+      op,
+      "CODEX_IMAGE_BASE_URL is required (set CODEX_IMAGE_BASE_URL, use --base-url, or set baseUrl in the config file)",
+    )
   }
 
   const apiKey = environment.CODEX_IMAGE_API_KEY
   if (apiKey === undefined || apiKey.trim().length === 0) {
-    return createResultError(op, "CODEX_IMAGE_API_KEY is required")
+    return createResultError(
+      op,
+      "CODEX_IMAGE_API_KEY is required (set CODEX_IMAGE_API_KEY, use --api-key-env, or set apiKey/apiKeyEnv in the config file)",
+    )
   }
 
   const clientInput: CodexImagenClientInput = { baseUrl, apiKey }

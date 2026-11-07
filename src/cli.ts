@@ -117,7 +117,14 @@ const generateCommand = buildCommand({
     const clientResult = cliImageClientFromFlags(flags)
     if (!clientResult.success) return cliResultError(clientResult)
 
-    const { dotenvPath: _dotenvPath, requestTimeoutMs: _requestTimeoutMs, ...generationFlags } = flags
+    const {
+      dotenvPath: _dotenvPath,
+      requestTimeoutMs: _requestTimeoutMs,
+      configPath: _configPath,
+      baseUrl: _baseUrl,
+      apiKeyEnv: _apiKeyEnv,
+      ...generationFlags
+    } = flags
     const result = await codexImageGenerate({ client: clientResult.data, ...generationFlags })
     return cliImageResultPresent(result, this.process)
   },
@@ -226,7 +233,14 @@ const editCommand = buildCommand({
     const clientResult = cliImageClientFromFlags(flags)
     if (!clientResult.success) return cliResultError(clientResult)
 
-    const { dotenvPath: _dotenvPath, requestTimeoutMs: _requestTimeoutMs, ...editFlags } = flags
+    const {
+      dotenvPath: _dotenvPath,
+      requestTimeoutMs: _requestTimeoutMs,
+      configPath: _configPath,
+      baseUrl: _baseUrl,
+      apiKeyEnv: _apiKeyEnv,
+      ...editFlags
+    } = flags
     const result = await codexImageEdit({ client: clientResult.data, ...editFlags })
     return cliImageResultPresent(result, this.process)
   },
